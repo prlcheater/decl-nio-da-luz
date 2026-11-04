@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-base text-neutral-100 font-body font-normal;
+  background-color: #101010;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-title;
+}
+
+/* Syne só existe em 400 no projeto (decisão de design) — nunca aplicar negrito nela */
+.font-body {
+  font-weight: 400 !important;
+}
+
+.site-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: #101010;
+  overflow: hidden;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes combat-float-a {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(10px, -14px) rotate(3deg); }
+}
+@keyframes combat-float-b {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(-12px, -10px) rotate(-4deg); }
+}
+@keyframes combat-float-c {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(8px, -18px) rotate(5deg); }
+}
+
+@keyframes toast-fade-out {
+  to { opacity: 0; transform: translateY(-10px); }
+}
+.combat-toast {
+  animation:
+    fade-in-up 1.4s cubic-bezier(0.16, 1, 0.3, 1) both,
+    toast-fade-out 1.4s ease-in 4s forwards;
+}
+
+.combat-focus-in {
+  animation: fade-in-up 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
