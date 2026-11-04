@@ -13,7 +13,15 @@
 -- ---------- Permissões básicas ----------
 -- O acesso real continua decidido pelas policies (RLS) abaixo.
 grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on all tables in schema public to authenticated;
+grant select, insert, update, delete on
+  profiles, elements, classes, characters,
+  skills_passive, character_skills_passive,
+  abilities, character_abilities,
+  items, character_equipment,
+  lore_entries, story_arcs, book_chapters,
+  enemies, enemy_instances, enemy_abilities,
+  battle_sessions, battle_participants, battle_ability_cooldowns
+  to authenticated;
 grant select on lore_entries, book_chapters, story_arcs to anon;
 
 -- search_path fixo: função security definer não pode depender do chamador.
