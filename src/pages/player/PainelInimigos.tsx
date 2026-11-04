@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Navigate, Link, useNavigate } from 'react-router-dom'
+import { Navigate, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2, Skull, UserRound } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -67,12 +67,14 @@ function EnemyCard({ enemy }: { enemy: EnemyRow }) {
 
 function AddEnemyCard({
   elements,
+  initialOpen,
   onAdd,
 }: {
   elements: { id: string; name: string }[]
+  initialOpen: boolean
   onAdd: (enemy: { name: string; tier: EnemyTier; level: number; element_id: string | null }) => Promise<string | null>
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(initialOpen)
   const [name, setName] = useState('')
   const [tier, setTier] = useState<EnemyTier>('comum')
   const [level, setLevel] = useState(1)
@@ -221,6 +223,7 @@ function InstanceCard({
 export default function PainelInimigos() {
   const { isMestre, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [enemies, setEnemies] = useState<EnemyRow[]>([])
   const [instances, setInstances] = useState<InstanceRow[]>([])
   const [elements, setElements] = useState<{ id: string; name: string }[]>([])
@@ -293,7 +296,7 @@ export default function PainelInimigos() {
           {enemies.map((enemy) => (
             <EnemyCard key={enemy.id} enemy={enemy} />
           ))}
-          <AddEnemyCard elements={elements} onAdd={addEnemy} />
+          <AddEnemyCard elements={elements} initialOpen={searchParams.get('novo') === '1'} onAdd={addEnemy} />
         </div>
       </Reveal>
 

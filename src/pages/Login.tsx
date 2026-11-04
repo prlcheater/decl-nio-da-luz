@@ -16,10 +16,10 @@ export default function Login() {
   // Navega só depois que o AuthContext realmente propagou a sessão nova —
   // navegar direto após o signInWithPassword resolver criava uma corrida onde
   // a próxima página renderizava antes do contexto saber que alguém tinha logado.
-  // Volta pro Home (não pra ficha) para não jogar o jogador direto pra dentro
-  // da ficha toda vez que ele loga ou já está logado ao abrir o site.
+  // Vai pra área do player, que manda o mestre pro painel e o jogador pra ficha.
+  // replace evita que o botão Voltar caia no login e seja redirecionado de novo.
   useEffect(() => {
-    if (session) navigate('/')
+    if (session) navigate('/player', { replace: true })
   }, [session, navigate])
 
   async function handleSubmit(e: FormEvent) {

@@ -8,14 +8,14 @@ Este documento nasceu como especificação, então parte dele descreve planos. O
 |---|---|
 | Home e Codex | Prontos, com conteúdo fixo em `src/lib/gameData.ts` e nas páginas (não leem `lore_entries` nem `story_arcs`) |
 | Livro | Só a tela "Em breve"; a tabela `book_chapters` existe, sem uso |
-| Login | Nome do Elementalista + PIN de 4 dígitos; sem Discord OAuth e sem cadastro público |
+| Login | Nome do Elementalista + PIN de 4 dígitos; sem Discord OAuth e sem cadastro público; depois de entrar, leva à área do player |
 | Ficha | Pronta; PV e PE máximos são calculados por fórmula, e `hp_base`/`ep_base` não são mais usados |
 | Criar Ficha | Só o mestre usa; cria login e ficha juntos |
 | Upload de item | Não implementado; itens têm nome e raridade, sem imagem |
 | Inimigos e Combate | Prontos: cadastro de inimigos, iniciativa, turnos e recarga, em tempo real |
 | Mapa de batalha | Não implementado |
 
-Configuração do banco e permissões: ver [README.md](../README.md).
+Configuração do banco e permissões: ver [README.md](../README.md). Pontos a melhorar: ver [próximos passos](../notas%20de%20atualização/próximos%20passos.md).
 
 ### Decisões pendentes com o Paulo
 
