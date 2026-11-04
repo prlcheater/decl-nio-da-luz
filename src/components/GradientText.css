@@ -48,6 +48,9 @@
   display: inline-block;
   position: relative;
   z-index: 2;
+  /* O gradiente só pinta dentro desta caixa: a folga evita cortar letras como g e j. */
+  padding: 0.2em 0.1em;
+  line-height: 1.3;
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
