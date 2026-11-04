@@ -1,5 +1,5 @@
 import { Link, Navigate } from 'react-router-dom'
-import { LogOut, Plus, Sparkles, Skull, Swords } from 'lucide-react'
+import { LogOut, Sparkles, Skull, Swords } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 import Reveal from '@/components/Reveal'
 import GlowCard from '@/components/GlowCard'
@@ -29,23 +29,6 @@ export default function PainelMestre() {
           <LogOut size={14} strokeWidth={1.75} />
           Sair
         </button>
-      </Reveal>
-
-      <Reveal delay={60} className="mt-8 flex flex-wrap gap-3">
-        <Link
-          to="/player/ficha/criar"
-          className="flex items-center gap-2 rounded-md bg-white px-4 py-2.5 font-body text-sm font-semibold text-neutral-950 transition-all duration-300 ease-out hover:bg-neutral-200 hover:scale-[1.03]"
-        >
-          <Plus size={16} strokeWidth={2} />
-          CRIAR FICHA ALIADA
-        </Link>
-        <Link
-          to="/player/mestre/inimigos?novo=1"
-          className="flex items-center gap-2 rounded-md border border-neutral-700 px-4 py-2.5 font-body text-sm font-semibold text-neutral-100 transition-all duration-300 ease-out hover:border-neutral-500 hover:scale-[1.03]"
-        >
-          <Plus size={16} strokeWidth={2} />
-          CRIAR FICHA INIMIGA
-        </Link>
       </Reveal>
 
       <Reveal delay={100} className="mt-10 grid gap-4 sm:grid-cols-3">

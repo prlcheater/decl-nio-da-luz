@@ -137,9 +137,8 @@ As mudanças de banco só valem depois de executar `supabase/patch-2026-11-04-se
 
 ---
 
-## Atualizações de 04/11/2026 (botões e login)
+## Atualizações de 04/11/2026 (login)
 
-- A Área do Mestre agora mostra os botões **Criar Ficha Aliada** e **Criar Ficha Inimiga**.
 - Depois do login, o mestre vai para o painel e o jogador para a ficha. Isso substitui a decisão de 16/08 de voltar para a Home.
 - Pontos a melhorar registrados em `próximos passos.md`.
 
