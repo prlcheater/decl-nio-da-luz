@@ -7,14 +7,19 @@ type RevealProps = {
   y?: number
   /** When false, content stays hidden and is not observed — used to gate reveals behind a page-level sequence. */
   active?: boolean
+  trigger?: 'viewport' | 'mount'
 }
 
-export default function Reveal({ children, className = '', delay = 0, y = 20, active = true }: RevealProps) {
+export default function Reveal({ children, className = '', delay = 0, y = 20, active = true, trigger = 'viewport' }: RevealProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [inView, setInView] = useState(false)
 
   useEffect(() => {
     if (!active) return
+    if (trigger === 'mount' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const frame = requestAnimationFrame(() => setInView(true))
+      return () => cancelAnimationFrame(frame)
+    }
     const el = ref.current
     if (!el) return
     const observer = new IntersectionObserver(
@@ -28,7 +33,7 @@ export default function Reveal({ children, className = '', delay = 0, y = 20, ac
     )
     observer.observe(el)
     return () => observer.disconnect()
-  }, [active])
+  }, [active, trigger])
 
   const visible = active && inView
 
@@ -40,7 +45,7 @@ export default function Reveal({ children, className = '', delay = 0, y = 20, ac
   }
 
   return (
-    <div ref={ref} className={className} style={style}>
+    <div ref={ref} className={'reveal ' + className} style={style}>
       {children}
     </div>
   )

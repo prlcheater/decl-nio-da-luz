@@ -180,6 +180,7 @@ function InstanceCard({
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="font-title font-semibold text-neutral-100">{instance.label?.trim() || enemy.name}</p>
+          <p className="text-xs text-neutral-400">ID: {instance.id.slice(0, 8)}</p>
           <p className="font-body text-xs text-neutral-500">{enemy.name} · {ENEMY_TIER_CONFIG[enemy.tier].label} · Nv. {enemy.level}</p>
         </div>
         {instance.status === 'defeated' && (
@@ -223,6 +224,8 @@ export default function PainelInimigos() {
   const navigate = useNavigate()
   const [enemies, setEnemies] = useState<EnemyRow[]>([])
   const [instances, setInstances] = useState<InstanceRow[]>([])
+  const [instanceError, setInstanceError] = useState<string | null>(null)
+  const [instantiating, setInstantiating] = useState(false)
   const [elements, setElements] = useState<{ id: string; name: string }[]>([])
 
   async function load() {
@@ -253,9 +256,15 @@ export default function PainelInimigos() {
 
   async function instantiate(enemy: EnemyRow, e: FormEvent) {
     e.preventDefault()
+    if (instantiating) return
+    setInstantiating(true)
+    setInstanceError(null)
     const { hpMax, epMax } = enemyMaxStats(enemy)
-    await supabase.from('enemy_instances').insert({ enemy_id: enemy.id, hp_current: hpMax, ep_current: epMax })
-    load()
+    const id = crypto.randomUUID()
+    const { error } = await supabase.from('enemy_instances').insert({ id, enemy_id: enemy.id, label: enemy.name + ' · ' + id.slice(0, 8), hp_current: hpMax, ep_current: epMax })
+    setInstantiating(false)
+    if (error) setInstanceError('Não foi possível instanciar o inimigo. Tente novamente.')
+    else await load()
   }
 
   async function applyDamage(instance: InstanceRow, danoRecebido: number) {
@@ -276,7 +285,7 @@ export default function PainelInimigos() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-16">
+    <div className="combat-page mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
       <Reveal className="flex items-start justify-between">
         <div>
           <h1 className="font-title font-bold text-3xl">Inimigos</h1>
@@ -301,12 +310,15 @@ export default function PainelInimigos() {
         <div className="flex items-center justify-between">
           <h2 className="font-title font-semibold text-xl text-neutral-100">Instâncias em jogo</h2>
         </div>
+        <p className="mt-2 text-sm text-neutral-400">Cópias avulsas para controle manual. Para uma luta, escolha as quantidades na preparação do Combate.</p>
+        {instanceError && <p role="alert" className="mt-3 text-red-300">{instanceError}</p>}
         {enemies.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {enemies.map((enemy) => (
               <form key={enemy.id} onSubmit={(e) => instantiate(enemy, e)}>
                 <button
                   type="submit"
+                  disabled={instantiating}
                   className="rounded border border-neutral-700 px-3 py-1.5 font-body text-xs text-neutral-300 transition-colors duration-300 hover:border-neutral-500 hover:text-white"
                 >
                   + Instanciar {enemy.name}

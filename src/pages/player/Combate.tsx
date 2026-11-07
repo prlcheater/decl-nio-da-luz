@@ -154,7 +154,7 @@ type CombatToast = DamageToast | RollToast
 type DistributiveOmit<T, K extends keyof never> = T extends unknown ? Omit<T, K> : never
 
 function sortParticipants(rows: ParticipantRow[]): ParticipantRow[] {
-  return [...rows].sort((a, b) => b.initiative_total - a.initiative_total || a.name.localeCompare(b.name, 'pt-BR'))
+  return [...rows].sort((a, b) => b.initiative_total - a.initiative_total || a.name.localeCompare(b.name, 'pt-BR') || a.id.localeCompare(b.id))
 }
 
 function hashUnit(seed: string, salt: number): number {
@@ -226,7 +226,8 @@ function FloatingParticipants({ items }: { items: Target[] }) {
 function FocusPortrait({ label, portraitUrl, hpCurrent, hpMax }: { label: string; portraitUrl: string | null; hpCurrent: number; hpMax: number }) {
   const pct = hpMax > 0 ? Math.max(0, Math.min(1, hpCurrent / hpMax)) : 0
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex w-24 min-w-0 flex-col items-center gap-2">
+      <p className="text-center text-sm text-neutral-200">{label}</p>
       <div className="h-20 w-20 overflow-hidden rounded-full border-2 border-neutral-600 bg-neutral-900" title={label} aria-label={label}>
         <Portrait url={portraitUrl} size={80} fallbackSize={32} />
       </div>
@@ -244,31 +245,29 @@ const SIDE_GLOW: Record<'aliado' | 'inimigo', string> = {
 
 function InitiativeSidebar({ sorted, currentIndex, targets }: { sorted: ParticipantRow[]; currentIndex: number; targets: Target[] }) {
   return (
-    <div className="pointer-events-none fixed left-3 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-[22px] sm:left-6 sm:flex">
-      {sorted.map((p, i) => {
-        const t = targets.find((x) => x.participantId === p.id)
-        const isCurrent = i === currentIndex % sorted.length
-        const pct = t && t.hpMax > 0 ? Math.max(0, Math.min(1, t.hpCurrent / t.hpMax)) : 0
-        return (
-          <div key={p.id} className={`flex flex-col items-center gap-1 transition-transform duration-300 ${isCurrent ? 'scale-110' : ''}`}>
-            <div
-              className={`h-9 w-9 overflow-hidden rounded-full border bg-neutral-900 ${isCurrent ? 'border-white' : 'border-neutral-700'}`}
-              style={{ boxShadow: SIDE_GLOW[p.side] }}
-            >
-              <Portrait url={t?.portraitUrl ?? null} size={36} fallbackSize={16} />
-            </div>
-            {isCurrent && (
-              <div className="h-1 w-9 overflow-hidden rounded-full bg-neutral-800">
-                <div className="h-full bg-red-500" style={{ width: `${pct * 100}%` }} />
+    <section aria-label="Ordem de iniciativa" className="relative z-10 my-5">
+      <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-300">Ordem de iniciativa</h2>
+      <ol className="grid gap-2 min-[400px]:grid-cols-2 lg:grid-cols-3">
+        {sorted.map((p, i) => {
+          const target = targets.find((t) => t.participantId === p.id)
+          const current = i === currentIndex % sorted.length
+          return (
+            <li key={p.id} aria-current={current ? "step" : undefined}
+              className={"flex min-w-0 items-center gap-3 rounded-xl border p-3 " + (current ? "border-violet-300 bg-violet-950/80" : "border-neutral-700 bg-neutral-950/90")}>
+              <span className="shrink-0 text-sm tabular-nums text-neutral-400">{i + 1}</span>
+              <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full"><Portrait url={target?.portraitUrl ?? null} size={40} fallbackSize={18} /></div>
+              <div className="min-w-0">
+                <p className="text-sm text-neutral-100">{p.name}</p>
+                <p className="text-xs text-neutral-300">{current ? "Turno atual · " : ""}{p.side === "aliado" ? "Aliado" : "Inimigo"}</p>
+                {target && <p className="text-xs tabular-nums text-neutral-300">PV {target.hpCurrent} / {target.hpMax}</p>}
               </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
+            </li>
+          )
+        })}
+      </ol>
+    </section>
   )
 }
-
 function CombatToastLayer({ toasts }: { toasts: CombatToast[] }) {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex flex-col items-center gap-5 sm:bottom-24">
@@ -351,11 +350,12 @@ function RosterColumn({
   )
 }
 
-function SetupForm({ onStart }: { onStart: (characterIds: string[], enemyTemplateIds: string[]) => void }) {
+function SetupForm({ onStart, starting }: { onStart: (characterIds: string[], enemyTemplateIds: string[]) => void; starting: boolean }) {
   const [characters, setCharacters] = useState<RosterEntry[]>([])
   const [enemyTemplates, setEnemyTemplates] = useState<RosterEntry[]>([])
   const [selectedChars, setSelectedChars] = useState<string[]>([])
-  const [selectedEnemies, setSelectedEnemies] = useState<string[]>([])
+  const [enemyCounts, setEnemyCounts] = useState<Record<string, number>>({})
+  const selectedEnemies = Object.entries(enemyCounts).flatMap(([id, count]) => Array.from({ length: count }, () => id))
 
   useEffect(() => {
     supabase
@@ -377,8 +377,8 @@ function SetupForm({ onStart }: { onStart: (characterIds: string[], enemyTemplat
 
   return (
     <GlowCard contentClassName="p-6">
-      <p className="font-body text-xs text-neutral-600">Escolha quem participa — só quem for selecionado entra na luta.</p>
-      <div className="mt-4 grid grid-cols-2 gap-6">
+      <p className="font-body text-sm text-neutral-400">Escolha os aliados e a quantidade de cada inimigo. Cada cópia terá seus próprios PV e PE.</p>
+      <div className="mt-4 grid gap-6 sm:grid-cols-2">
         <RosterColumn
           label="Elementalistas"
           side="aliado"
@@ -386,21 +386,36 @@ function SetupForm({ onStart }: { onStart: (characterIds: string[], enemyTemplat
           selected={selectedChars}
           onToggle={(id) => toggle(selectedChars, id, setSelectedChars)}
         />
-        <RosterColumn
-          label="Inimigos"
-          side="inimigo"
-          entries={enemyTemplates}
-          selected={selectedEnemies}
-          onToggle={(id) => toggle(selectedEnemies, id, setSelectedEnemies)}
-        />
+        <div className="flex min-w-0 flex-col gap-3">
+          <p className="text-sm uppercase tracking-wide text-neutral-400">Inimigos</p>
+          {enemyTemplates.length === 0 && <p className="text-sm text-neutral-400">Nenhum inimigo cadastrado.</p>}
+          {enemyTemplates.map((enemy) => (
+            <div key={enemy.id} className="rounded-xl border border-neutral-700 bg-neutral-900/60 p-3">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full"><Portrait url={enemy.portrait_url} size={48} fallbackSize={20} /></div>
+                <p className="min-w-0 text-sm text-neutral-100">{enemy.name}<span className="block text-neutral-400">Nível {enemy.level}</span></p>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button aria-label={"Remover uma cópia de " + enemy.name} disabled={starting || !enemyCounts[enemy.id]}
+                  onClick={() => setEnemyCounts((prev) => ({ ...prev, [enemy.id]: Math.max(0, (prev[enemy.id] ?? 0) - 1) }))}
+                  className="rounded-lg border border-neutral-600 text-xl disabled:opacity-40">−</button>
+                <output aria-label={"Quantidade de " + enemy.name} className="min-w-10 text-center text-lg tabular-nums">{enemyCounts[enemy.id] ?? 0}</output>
+                <button aria-label={"Adicionar uma cópia de " + enemy.name} disabled={starting || (enemyCounts[enemy.id] ?? 0) >= 20}
+                  onClick={() => setEnemyCounts((prev) => ({ ...prev, [enemy.id]: Math.min(20, (prev[enemy.id] ?? 0) + 1) }))}
+                  className="rounded-lg border border-neutral-600 text-xl disabled:opacity-40">+</button>
+                <span className="text-sm text-neutral-400">Até 20 cópias</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <button
         onClick={() => onStart(selectedChars, selectedEnemies)}
-        disabled={selectedChars.length + selectedEnemies.length === 0}
+        disabled={starting || selectedChars.length + selectedEnemies.length === 0}
         className="mt-6 flex w-full items-center justify-center gap-1.5 rounded bg-white px-4 py-3 font-body text-sm font-semibold text-neutral-950 disabled:opacity-40"
       >
-        <Swords size={16} strokeWidth={2} /> Iniciar Combate
+        <Swords size={16} strokeWidth={2} /> {starting ? 'Preparando combate…' : 'Iniciar Combate'}
       </button>
     </GlowCard>
   )
@@ -540,7 +555,7 @@ function AbilityPopup({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-lg border border-neutral-800 bg-neutral-950 p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[85dvh] w-full max-w-sm overflow-y-auto rounded-lg border border-neutral-800 bg-neutral-950 p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-2">
           <p className="font-title font-semibold text-neutral-100">Habilidade em {target.label}</p>
           <button onClick={onClose} aria-label="Fechar" className="text-neutral-500 transition-colors duration-300 hover:text-white">
@@ -647,6 +662,9 @@ export default function Combate() {
   const [actorAbilities, setActorAbilities] = useState<AbilityRow[]>([])
   const [actorEnemyAbilities, setActorEnemyAbilities] = useState<AbilityRow[]>([])
   const [actorCooldowns, setActorCooldowns] = useState<CooldownRow[]>([])
+  const [starting, setStarting] = useState(false)
+  const startingRef = useRef(false)
+  const [setupError, setSetupError] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<string | null>(null)
   const [toasts, setToasts] = useState<CombatToast[]>([])
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
@@ -772,70 +790,57 @@ export default function Combate() {
   if (authLoading || battle === undefined) return null
 
   async function startBattle(characterIds: string[], enemyTemplateIds: string[]) {
-    const { data: battleRow } = await supabase.from('battle_sessions').insert({ status: 'active' }).select('id').single()
-    if (!battleRow) return
-
-    const [{ data: charRows }, { data: enemyRows }] = await Promise.all([
-      characterIds.length
-        ? supabase.from('characters').select('id, name, level').in('id', characterIds)
-        : Promise.resolve({ data: [] as { id: string; name: string; level: number }[] }),
-      enemyTemplateIds.length
-        ? supabase.from('enemies').select('id, name, tier, level, resistance, intellect').in('id', enemyTemplateIds)
-        : Promise.resolve({ data: [] as { id: string; name: string; tier: EnemyTier; level: number; resistance: number; intellect: number }[] }),
-    ])
-
-    type ParticipantInsert = {
-      battle_session_id: string
-      character_id?: string
-      enemy_instance_id?: string
-      name: string
-      side: 'aliado' | 'inimigo'
-      initiative_roll: number
-      initiative_bonus: number
-      initiative_total: number
-    }
-
-    const toInsert: ParticipantInsert[] = ((charRows as { id: string; name: string; level: number }[]) ?? []).map((c) => {
-      const init = rollInitiative(c.level)
-      return {
-        battle_session_id: battleRow.id,
-        character_id: c.id,
-        name: c.name,
-        side: 'aliado',
-        initiative_roll: init.roll,
-        initiative_bonus: init.bonus,
-        initiative_total: init.total,
-      }
-    })
-
-    // Cada inimigo escolhido aqui é instanciado na hora (não precisa mais pré-criar no
-    // Painel de Inimigos) — cria a instância e já monta o participante em seguida.
-    for (const e of (enemyRows as { id: string; name: string; tier: EnemyTier; level: number; resistance: number; intellect: number }[]) ?? []) {
-      const mult = ENEMY_TIER_CONFIG[e.tier].vidaMult
-      const hpMax = Math.round(calculateHpMax({ resistance: e.resistance, level: e.level }) * mult)
-      const epMax = Math.round(calculateEpMax({ intellect: e.intellect, level: e.level }) * mult)
-      const { data: instance } = await supabase
-        .from('enemy_instances')
-        .insert({ enemy_id: e.id, hp_current: hpMax, ep_current: epMax })
-        .select('id')
-        .single()
-      if (!instance) continue
-      const init = rollInitiative(e.level)
-      toInsert.push({
-        battle_session_id: battleRow.id,
-        enemy_instance_id: instance.id,
-        name: e.name,
-        side: 'inimigo',
-        initiative_roll: init.roll,
-        initiative_bonus: init.bonus,
-        initiative_total: init.total,
+    if (startingRef.current || !isMestre) return
+    startingRef.current = true
+    setStarting(true)
+    setSetupError(null)
+    let battleId: string | null = null
+    const instanceIds: string[] = []
+    try {
+      const { data: session, error: sessionError } = await supabase.from('battle_sessions').insert({ status: 'setup' }).select('id').single()
+      if (sessionError || !session) throw new Error("Não foi possível preparar o combate.")
+      battleId = session.id
+      const [charResult, enemyResult] = await Promise.all([
+        characterIds.length ? supabase.from('characters').select('id, name, level').in('id', characterIds) : Promise.resolve({ data: [], error: null }),
+        enemyTemplateIds.length ? supabase.from('enemies').select('id, name, tier, level, resistance, intellect').in('id', [...new Set(enemyTemplateIds)]) : Promise.resolve({ data: [], error: null }),
+      ])
+      if (charResult.error || enemyResult.error || charResult.data?.length !== characterIds.length || enemyResult.data?.length !== new Set(enemyTemplateIds).size) throw new Error("Não foi possível carregar todos os participantes. Atualize a página e tente novamente.")
+      type ParticipantInsert = { battle_session_id: string; character_id?: string; enemy_instance_id?: string; name: string; side: string; initiative_roll: number; initiative_bonus: number; initiative_total: number }
+      const toInsert: ParticipantInsert[] = (charResult.data ?? []).map((c) => {
+        const init = rollInitiative(c.level)
+        return { battle_session_id: session.id, character_id: c.id, name: c.name, side: 'aliado', initiative_roll: init.roll, initiative_bonus: init.bonus, initiative_total: init.total }
       })
+      for (const templateId of enemyTemplateIds) {
+        const enemy = enemyResult.data!.find((row) => row.id === templateId)!
+        const label = enemy.name
+        const instanceId = crypto.randomUUID()
+        const mult = ENEMY_TIER_CONFIG[enemy.tier as EnemyTier].vidaMult
+        instanceIds.push(instanceId)
+        const { error } = await supabase.from('enemy_instances').insert({
+          id: instanceId, enemy_id: enemy.id, label,
+          hp_current: Math.round(calculateHpMax({ resistance: enemy.resistance, level: enemy.level }) * mult),
+          ep_current: Math.round(calculateEpMax({ intellect: enemy.intellect, level: enemy.level }) * mult),
+        })
+        if (error) throw new Error("Não foi possível criar todas as cópias dos inimigos.")
+        const init = rollInitiative(enemy.level)
+        toInsert.push({ battle_session_id: session.id, enemy_instance_id: instanceId, name: label, side: 'inimigo', initiative_roll: init.roll, initiative_bonus: init.bonus, initiative_total: init.total })
+      }
+      if (!toInsert.length) throw new Error("Selecione pelo menos um participante.")
+      const { error: participantError } = await supabase.from('battle_participants').insert(toInsert)
+      if (participantError) throw new Error("Não foi possível salvar os participantes.")
+      const { error: activateError } = await supabase.from('battle_sessions').update({ status: 'active' }).eq('id', session.id)
+      if (activateError) throw new Error("Não foi possível ativar o combate.")
+      await load()
+    } catch (error) {
+      let cleanupFailed = false
+      if (battleId) { const result = await supabase.from('battle_sessions').delete().eq('id', battleId); cleanupFailed = !!result.error }
+      if (instanceIds.length) { const result = await supabase.from('enemy_instances').delete().in('id', instanceIds); cleanupFailed = cleanupFailed || !!result.error }
+      setSetupError((error instanceof Error ? error.message : "Falha ao iniciar o combate.") + (cleanupFailed ? " A limpeza ficou incompleta; verifique as instâncias no painel antes de tentar novamente." : " Nenhum combate parcial foi mantido."))
+    } finally {
+      startingRef.current = false
+      setStarting(false)
     }
-
-    await supabase.from('battle_participants').insert(toInsert)
-    load()
   }
-
   async function nextTurn() {
     if (!battle || participants.length === 0) return
     const nextIndex = (battle.current_turn_index + 1) % participants.length
@@ -853,23 +858,24 @@ export default function Combate() {
 
   if (!battle) {
     return (
-      <div className="mx-auto max-w-3xl px-6 py-16">
+      <div className="combat-page mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
         <CombatToastLayer toasts={toasts} />
-        <Reveal className="flex items-center justify-between gap-4">
+        <Reveal trigger="mount" className="flex items-center justify-between gap-4">
           <BlurText text="Combate" delay={60} animateBy="chars" direction="top" className="font-title font-bold text-3xl" />
           <Link to="/player" className="font-body text-xs text-neutral-500 transition-colors duration-300 hover:text-white">
             ← Voltar
           </Link>
         </Reveal>
         {isMestre ? (
-          <Reveal delay={80}>
+          <Reveal trigger="mount" delay={80}>
             <p className="mt-2 font-body text-neutral-400">Escolha quem participa e inicie o combate.</p>
             <div className="mt-6">
-              <SetupForm onStart={startBattle} />
+              {setupError && <p role="alert" className="mb-4 text-sm text-red-300">{setupError}</p>}
+              <SetupForm onStart={startBattle} starting={starting} />
             </div>
           </Reveal>
         ) : (
-          <Reveal delay={80}>
+          <Reveal trigger="mount" delay={80}>
             <p className="mt-2 font-body text-neutral-400">Nenhum combate em andamento no momento.</p>
           </Reveal>
         )}
@@ -1093,24 +1099,23 @@ export default function Combate() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16">
+    <div className="combat-page mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
       <FloatingParticipants items={targets} />
       <CombatToastLayer toasts={toasts} />
-      <InitiativeSidebar sorted={sorted} currentIndex={battle.current_turn_index} targets={targets} />
 
-      <Reveal className="flex items-start justify-between gap-4">
+      <Reveal trigger="mount" className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <BlurText text="Combate" delay={60} animateBy="chars" direction="top" className="font-title font-bold text-3xl" />
           <p className="mt-1 font-body text-sm text-neutral-500">Rodada {battle.round_number}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {isMestre && (
             <>
               <button
                 onClick={nextTurn}
                 className="flex items-center gap-1.5 rounded bg-white px-3 py-1.5 font-body text-xs font-semibold text-neutral-950"
               >
-                <Play size={13} strokeWidth={2} /> Next
+                <Play size={16} strokeWidth={2} /> Próximo turno
               </button>
               <button
                 onClick={endBattle}
@@ -1126,9 +1131,11 @@ export default function Combate() {
         </div>
       </Reveal>
 
+      <InitiativeSidebar sorted={sorted} currentIndex={battle.current_turn_index} targets={targets} />
+
       {canAct && (actingCharacter || actingEnemyInstance) && currentParticipant && (
         <>
-          <Reveal delay={80} className="relative z-10 mt-8 text-center">
+          <Reveal trigger="mount" delay={80} className="relative z-10 mt-8 text-center">
             <TextType
               key={currentParticipant.id}
               text={[`Vez de ${actingLabel}`]}
@@ -1139,12 +1146,12 @@ export default function Combate() {
             />
           </Reveal>
 
-          <Reveal delay={110} className="relative z-10 mt-4">
+          <Reveal trigger="mount" delay={110} className="relative z-10 mt-4">
             <GlowCard contentClassName="p-6">
-              <div className="flex items-center justify-center gap-8">
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-8">
                 <FocusPortrait label={actingLabel} portraitUrl={actingPortraitUrl} hpCurrent={actingHpCurrent} hpMax={actingHpMax} />
                 {activeToastTarget && activeToastTarget.participantId !== currentParticipant.id && (
-                  <div className="combat-focus-in flex items-center gap-8">
+                  <div className="combat-focus-in flex items-center gap-3 sm:gap-8">
                     <span className="font-title text-2xl text-neutral-700">⚔</span>
                     <FocusPortrait
                       label={activeToastTarget.label}

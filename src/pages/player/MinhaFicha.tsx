@@ -168,19 +168,20 @@ function StatSlider({
 }) {
   return (
     <div>
-      <div className="flex items-baseline justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <span className="font-body text-xs uppercase tracking-wide text-neutral-500">{label}</span>
         <div className="flex items-center gap-2">
           <span className="font-title font-semibold text-neutral-200">
             {current} <span className="text-neutral-600">/ {base}</span>
           </span>
           <button onClick={onRestore} aria-label={`Restaurar ${label}`} className="text-neutral-600 transition-colors duration-300 hover:text-white">
-            <RotateCcw size={14} strokeWidth={1.75} />
+            <RotateCcw size={20} strokeWidth={1.75} />
           </button>
         </div>
       </div>
       <input
         type="range"
+        aria-label={label}
         min={0}
         max={base}
         value={Math.min(current, base)}
@@ -188,7 +189,7 @@ function StatSlider({
         onMouseUp={onCommit}
         onTouchEnd={onCommit}
         onKeyUp={onCommit}
-        className="mt-2 w-full cursor-pointer"
+        className="h-8 w-full cursor-pointer"
         style={{ accentColor: accent }}
       />
     </div>
@@ -361,7 +362,7 @@ export default function MinhaFicha() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-16">
+    <div className="character-sheet mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       {pendingPortraitFile && (
         <ImageCropModal
           file={pendingPortraitFile}
@@ -382,7 +383,7 @@ export default function MinhaFicha() {
         </defs>
       </svg>
 
-      <Reveal className="flex items-center justify-between gap-4">
+      <Reveal trigger="mount" className="flex flex-wrap items-center justify-between gap-2">
         {canEdit ? (
           <Link to="/player/mestre/elementalistas" className="font-body text-xs text-neutral-500 transition-colors duration-300 hover:text-white">
             ← Todas as fichas
@@ -430,11 +431,6 @@ export default function MinhaFicha() {
 
       {saveError && <p role="alert" className="mt-3 font-body text-sm text-red-400">{saveError}</p>}
 
-      <Reveal delay={30} className="mt-3 flex justify-end gap-5">
-        <CurrencyEditor icon={CreditCard} color="#3b82f6" label="Créditos" value={character.credits} canEdit={canEdit} onSave={(v) => persist({ credits: v })} />
-        <CurrencyEditor icon={KeyRound} color="#d4af37" label="Cifras" value={character.cifras} canEdit={canEdit} onSave={(v) => persist({ cifras: v })} />
-      </Reveal>
-
       <HeaderCard
         character={character}
         canEdit={canEdit}
@@ -445,8 +441,8 @@ export default function MinhaFicha() {
         classEntry={classEntry}
       />
 
-      <Reveal delay={120} className="mt-4">
-        <GlowCard contentClassName="grid gap-5 p-6 sm:grid-cols-2">
+      <Reveal trigger="mount" delay={120} className="mt-4">
+        <GlowCard contentClassName="grid gap-3 p-4 sm:grid-cols-2 sm:gap-6 sm:p-5">
           <StatSlider
             label="Pontos de Vida"
             current={character.hp_current}
@@ -468,15 +464,20 @@ export default function MinhaFicha() {
         </GlowCard>
       </Reveal>
 
-      <Reveal delay={130} className="mt-10">
+      <Reveal trigger="mount" delay={30} className="mt-3 grid grid-cols-2 gap-3">
+        <CurrencyEditor icon={CreditCard} color="#3b82f6" label="Créditos" value={character.credits} canEdit={canEdit} onSave={(v) => persist({ credits: v })} />
+        <CurrencyEditor icon={KeyRound} color="#d4af37" label="Cifras" value={character.cifras} canEdit={canEdit} onSave={(v) => persist({ cifras: v })} />
+      </Reveal>
+
+      <Reveal trigger="mount" delay={130} className="mt-5">
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="w-full overflow-x-auto sm:w-fit">
-            <div className="flex w-max gap-0.5 rounded-full border border-neutral-800 bg-neutral-900/60 p-1">
+          <div className="w-full min-w-0">
+            <div className="grid grid-cols-2 gap-1 rounded-xl border border-neutral-700 bg-neutral-900/80 p-1 sm:grid-cols-5">
               {TABS.map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => setActiveTab(t.id)}
-                  className={`whitespace-nowrap rounded-full px-3.5 py-1.5 font-body text-xs font-semibold transition-colors duration-300 sm:px-5 sm:text-sm ${
+                  onClick={() => setActiveTab(t.id)} aria-pressed={activeTab === t.id}
+                  className={`min-h-11 rounded-lg px-2 py-2 font-body text-sm font-semibold transition-colors duration-300 ${
                     activeTab === t.id ? 'bg-white text-neutral-950' : 'text-neutral-400 hover:text-white'
                   }`}
                 >
@@ -493,32 +494,32 @@ export default function MinhaFicha() {
         </div>
 
         {activeTab === 'status' && (
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
             {TRAITS_META.map((trait) => (
               <GlowCard key={trait.key} contentClassName="p-4 text-center">
                 <trait.icon size={20} strokeWidth={1.5} className="mx-auto text-neutral-400" />
-                <div className="mt-2 flex items-center justify-center gap-1.5">
+                <div className="mt-2 flex flex-col items-center justify-center gap-2">
                   <p className="font-title font-bold text-xl text-neutral-100">{character[trait.key]}</p>
                   {canEdit && (
-                    <div className="flex flex-col">
+                    <div className="flex flex-wrap items-center gap-1">
                       <button
                         onClick={() => adjustTrait(trait.key, 1)}
                         aria-label={`Aumentar ${trait.label}`}
                         className="text-neutral-600 transition-colors duration-300 hover:text-white"
                       >
-                        <ChevronUp size={13} strokeWidth={2} />
+                        <ChevronUp size={20} strokeWidth={2} />
                       </button>
                       <button
                         onClick={() => adjustTrait(trait.key, -1)}
                         aria-label={`Diminuir ${trait.label}`}
-                        className="-mt-1 text-neutral-600 transition-colors duration-300 hover:text-white"
+                        className="text-neutral-400 transition-colors duration-300 hover:text-white"
                       >
-                        <ChevronDown size={13} strokeWidth={2} />
+                        <ChevronDown size={20} strokeWidth={2} />
                       </button>
                     </div>
                   )}
                 </div>
-                <p className="font-body text-[11px] uppercase tracking-wide text-neutral-500">{trait.label}</p>
+                <p className="mt-2 break-words font-body text-sm text-neutral-300">{trait.label}</p>
               </GlowCard>
             ))}
           </div>
@@ -609,7 +610,7 @@ export default function MinhaFicha() {
       </Reveal>
 
       {canEdit && (
-        <Reveal delay={170} className="mt-16 border-t border-neutral-900 pt-6">
+        <Reveal trigger="mount" delay={170} className="mt-16 border-t border-neutral-900 pt-6">
           <DeleteFichaButton onDelete={handleDeleteFicha} />
         </Reveal>
       )}
@@ -635,43 +636,17 @@ function CurrencyEditor({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(String(value))
 
-  if (!canEdit) {
-    return (
-      <span className="flex items-center gap-1.5 font-body text-sm text-neutral-300" aria-label={label} title={label}>
-        <Icon size={16} strokeWidth={1.75} style={{ color }} />
-        {value}
-      </span>
-    )
-  }
-
-  if (!editing) {
-    return (
-      <button
-        onClick={() => { setDraft(String(value)); setEditing(true) }}
-        aria-label={`Editar ${label}`}
-        title={label}
-        className="flex items-center gap-1.5 font-body text-sm text-neutral-300 transition-colors duration-300 hover:text-white"
-      >
-        <Icon size={16} strokeWidth={1.75} style={{ color }} />
-        {value}
-      </button>
-    )
-  }
-
   return (
-    <span className="flex items-center gap-1.5">
-      <Icon size={16} strokeWidth={1.75} style={{ color }} />
-      <input
-        type="number"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        className="w-16 rounded border border-neutral-700 bg-neutral-900 px-1.5 py-0.5 font-body text-xs text-neutral-200"
-        autoFocus
-      />
-      <button onClick={() => { onSave(Number(draft) || 0); setEditing(false) }} className="font-body text-xs text-neutral-400 hover:text-white">
-        ok
-      </button>
-    </span>
+    <div className="min-w-0 rounded-xl border border-neutral-800 bg-neutral-900/60 px-3 py-2">
+      <div className="flex items-center gap-2 text-sm text-neutral-400"><Icon size={18} className="shrink-0" style={{ color }} /><span>{label}</span></div>
+      {editing ? <div className="mt-1 flex flex-wrap gap-2">
+        <input type="number" aria-label={label} value={draft} onChange={(e) => setDraft(e.target.value)} className={inputClass} autoFocus />
+        <button onClick={() => { onSave(Number(draft) || 0); setEditing(false) }} className="rounded border border-neutral-600 px-2 text-sm">Salvar</button>
+        <button onClick={() => setEditing(false)} className="text-sm text-neutral-400">Cancelar</button>
+      </div> : canEdit ? <button onClick={() => { setDraft(String(value)); setEditing(true) }} aria-label={"Editar " + label} className="mt-1 flex w-full min-w-0 items-center justify-between gap-2 text-left">
+        <span className="break-all font-title text-lg tabular-nums">{value.toLocaleString("pt-BR")}</span><Pencil size={16} className="shrink-0 text-neutral-400" />
+      </button> : <p className="mt-1 break-all font-title text-lg tabular-nums">{value.toLocaleString("pt-BR")}</p>}
+    </div>
   )
 }
 
@@ -681,7 +656,7 @@ function RollResultRow({ label, result }: { label: string; result: TestResult | 
   const free = !isTest ? (result as FreeRollResult) : null
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded border border-neutral-800 bg-neutral-950/60 px-3 py-2">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-neutral-800 bg-neutral-950/60 px-3 py-2">
       <div>
         <p className="font-body text-xs text-neutral-400">{label}</p>
         <p className="font-body text-[11px] text-neutral-600">
@@ -719,7 +694,7 @@ function RollPanel({ character }: { character: CharacterRow }) {
     <div>
       <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="font-title font-semibold text-neutral-100">Teste de Status</h3>
-        <div className="flex rounded-full border border-neutral-800 bg-neutral-900/60 p-1">
+        <div className="grid w-full grid-cols-2 gap-1 rounded-xl border border-neutral-800 bg-neutral-900/60 p-1 sm:w-auto sm:grid-cols-4">
           {DIFFICULTIES.map((d) => (
             <button
               key={d.id}
@@ -915,118 +890,53 @@ function HeaderCard({
   }
 
   return (
-    <Reveal delay={60} className="mt-4">
-      <GlowCard contentClassName="p-6">
-        <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:items-start sm:text-left">
-          <div className="group relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-2 border-neutral-700 bg-neutral-900">
-            {character.portrait_url ? (
-              <img src={character.portrait_url} alt={character.name} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <UserRound size={44} strokeWidth={1.25} className="text-neutral-600" />
-              </div>
-            )}
-            {canEdit && (
-              <>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  aria-label="Alterar foto do personagem"
-                  className="absolute inset-0 flex items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                >
-                  <Camera size={22} strokeWidth={1.75} />
-                </button>
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={onPortraitChange} className="hidden" />
-              </>
-            )}
-          </div>
-
-          <div className="flex-1">
-            {editing ? (
-              <div className="flex flex-col gap-2">
-                <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Nome" />
-                <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder="Título" />
-                <div className="flex items-center gap-2">
-                  <button onClick={save} className="rounded bg-white px-3 py-1.5 font-body text-xs font-semibold text-neutral-950">Salvar</button>
-                  <button onClick={() => setEditing(false)} className="rounded border border-neutral-700 px-3 py-1.5 font-body text-xs text-neutral-400">Cancelar</button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <h1 className="font-title font-bold text-3xl text-neutral-100">{character.name}</h1>
-                {character.title && <p className="mt-1.5 font-body text-sm italic text-neutral-500">{character.title}</p>}
-                {canEdit && (
-                  <button
-                    onClick={() => setEditing(true)}
-                    className="mt-2 flex items-center gap-1 font-body text-xs text-neutral-500 transition-colors duration-300 hover:text-white"
-                  >
-                    <Pencil size={11} strokeWidth={1.75} /> Editar
-                  </button>
-                )}
-              </>
-            )}
-
-            <div className="mt-4 max-w-xs sm:max-w-sm">
-              <div className="flex items-center gap-1.5">
-                <p className="font-body text-[13px] uppercase tracking-wide text-neutral-500">Nível {character.level}</p>
-                {canEdit && (
-                  <div className="flex flex-col">
-                    <button
-                      onClick={() => onSave({ level: Math.min(MAX_LEVEL, character.level + 1) })}
-                      aria-label="Aumentar nível"
-                      className="text-neutral-600 transition-colors duration-300 hover:text-white"
-                    >
-                      <ChevronUp size={11} strokeWidth={2} />
-                    </button>
-                    <button
-                      onClick={() => onSave({ level: Math.max(1, character.level - 1) })}
-                      aria-label="Diminuir nível"
-                      className="-mt-1 text-neutral-600 transition-colors duration-300 hover:text-white"
-                    >
-                      <ChevronDown size={11} strokeWidth={2} />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="relative mt-1.5 h-4 w-full">
-                <div className="pointer-events-none absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-neutral-800">
-                  <div
-                    className="h-full rounded-full transition-[width] duration-300 ease-out"
-                    style={{
-                      width: `${xpDraft}%`,
-                      background: 'linear-gradient(90deg, #9ca3af, #ffffff)',
-                      boxShadow: '0 0 6px 0 rgba(255,255,255,0.55)',
-                    }}
-                  />
-                </div>
-                {canEdit && (
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={xpDraft}
-                    aria-label="Progresso para o próximo nível"
-                    onChange={(e) => setXpDraft(Number(e.target.value))}
-                    onMouseUp={() => onSave({ xp_progress: xpDraft })}
-                    onTouchEnd={() => onSave({ xp_progress: xpDraft })}
-                    className="absolute inset-0 h-4 w-full cursor-pointer opacity-0"
-                  />
-                )}
-              </div>
+    <Reveal trigger="mount" delay={60} className="mt-3">
+      <GlowCard contentClassName="p-4 sm:p-6">
+        <div className="grid grid-cols-[64px_minmax(0,1fr)] items-start gap-4 sm:grid-cols-[96px_minmax(0,1fr)]">
+          <div className="relative h-16 w-16 sm:h-24 sm:w-24">
+            <div className="h-full w-full overflow-hidden rounded-2xl border border-neutral-600 bg-neutral-900">
+              {character.portrait_url ? <img src={character.portrait_url} alt={character.name} className="h-full w-full object-cover" />
+              : <div className="flex h-full items-center justify-center"><UserRound size={32} className="text-neutral-400" /></div>}
             </div>
+            {canEdit && <>
+              <button onClick={() => fileInputRef.current?.click()} aria-label="Alterar foto do personagem" className="absolute -bottom-3 -right-2 flex items-center justify-center rounded-full border border-neutral-600 bg-neutral-900 text-white"><Camera size={18} /></button>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={onPortraitChange} className="hidden" />
+            </>}
           </div>
-
-          <div className="flex shrink-0 flex-col items-center gap-2 sm:ml-auto">
-            {element && (
-              <span title={`${element.name} — ${element.epithet}`}>
-                <element.icon size={36} strokeWidth={1.5} style={{ stroke: 'url(#ficha-element-gradient)' }} />
-              </span>
-            )}
-            {classEntry && (
-              <span title={classEntry.name}>
-                <classEntry.icon size={24} strokeWidth={1.5} className="text-neutral-400" />
-              </span>
-            )}
+          <div className="min-w-0">
+            {editing ? <div className="flex flex-col gap-2">
+              <input aria-label="Nome do personagem" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+              <input aria-label="Título do personagem" value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
+              <div className="flex flex-wrap gap-2">
+                <button onClick={save} className="rounded bg-white px-3 text-neutral-950">Salvar</button>
+                <button onClick={() => setEditing(false)} className="rounded border border-neutral-600 px-3">Cancelar</button>
+              </div>
+            </div> : <>
+              <h1 className="break-words font-title text-2xl font-bold leading-tight text-neutral-100 sm:text-3xl">{character.name}</h1>
+              {character.title && <p className="mt-2 break-words text-sm leading-relaxed text-neutral-300">{character.title}</p>}
+              {canEdit && <button onClick={() => setEditing(true)} className="mt-1 inline-flex items-center gap-2 text-sm text-neutral-300"><Pencil size={16} /> Editar</button>}
+            </>}
           </div>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+          {element && <span className="inline-flex items-center gap-2"><element.icon size={22} style={{ stroke: "url(#ficha-element-gradient)" }} />{element.name}</span>}
+          {classEntry && <span className="inline-flex items-center gap-2"><classEntry.icon size={20} className="text-neutral-300" />{classEntry.name}</span>}
+        </div>
+        <div className="mt-3 border-t border-neutral-800 pt-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label htmlFor="character-xp" className="text-sm text-neutral-300">Nível {character.level} · XP {xpDraft}%</label>
+            {canEdit && <div className="flex items-center gap-2">
+              <button onClick={() => onSave({ level: Math.max(1, character.level - 1) })} aria-label="Diminuir nível" className="flex items-center justify-center rounded border border-neutral-700"><ChevronDown size={20} /></button>
+              <button onClick={() => onSave({ level: Math.min(MAX_LEVEL, character.level + 1) })} aria-label="Aumentar nível" className="flex items-center justify-center rounded border border-neutral-700"><ChevronUp size={20} /></button>
+            </div>}
+          </div>
+          {canEdit ? <input id="character-xp" type="range" min={0} max={100} value={xpDraft}
+            onChange={(e) => setXpDraft(Number(e.target.value))}
+            onMouseUp={() => onSave({ xp_progress: xpDraft })}
+            onTouchEnd={() => onSave({ xp_progress: xpDraft })}
+            onKeyUp={() => onSave({ xp_progress: xpDraft })}
+            className="h-8 w-full accent-violet-400" />
+          : <progress id="character-xp" max={100} value={xpDraft} className="mt-2 h-2 w-full accent-violet-400" />}
         </div>
       </GlowCard>
     </Reveal>
@@ -1262,7 +1172,7 @@ function InventorySection({
           <p className="font-body text-sm text-neutral-600">Bolsa vazia.</p>
         </div>
       ) : (
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-4 grid gap-3 min-[380px]:grid-cols-2 sm:grid-cols-4">
           {items.map((row) => {
             const meta = ITEM_CATEGORIES.find((c) => c.id === row.items?.category)
             return (
@@ -1271,7 +1181,7 @@ function InventorySection({
                   <button
                     onClick={() => onRemove(row.id)}
                     aria-label={`Remover ${row.items?.name}`}
-                    className="absolute right-1.5 top-1.5 text-neutral-700 opacity-0 transition-opacity duration-200 hover:text-red-400 group-hover:opacity-100"
+                    className="mb-2 ml-auto flex items-center justify-center rounded border border-neutral-700 text-neutral-400 hover:text-red-400"
                   >
                     <X size={12} strokeWidth={2} />
                   </button>
@@ -1297,7 +1207,7 @@ function DeleteFichaButton({ onDelete }: { onDelete: () => void }) {
     )
   }
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <span className="font-body text-xs text-neutral-400">Excluir essa ficha de vez?</span>
       <button onClick={onDelete} className="rounded bg-red-500/90 px-3 py-1.5 font-body text-xs font-semibold text-white hover:bg-red-500">Sim, excluir</button>
       <button onClick={() => setConfirming(false)} className="rounded border border-neutral-700 px-3 py-1.5 font-body text-xs text-neutral-400 hover:text-white">Cancelar</button>

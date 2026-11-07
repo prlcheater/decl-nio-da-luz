@@ -73,3 +73,16 @@ h6 {
 .combat-focus-in {
   animation: fade-in-up 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* Beta 1.0: readable sheet and touch controls. */
+.character-sheet, .combat-page { overflow-wrap: anywhere; }
+.character-sheet :where(button, a), .combat-page :where(button, a) { min-height: 44px; }
+.character-sheet button, .combat-page button { min-width: 44px; }
+.character-sheet :where(input:not([type="checkbox"]):not([type="range"]), select, textarea) { min-width: 0; min-height: 44px; font-size: 16px; }
+.character-sheet :where(.text-xs, .text-\[10px\], .text-\[11px\]) { font-size: 0.875rem; line-height: 1.5; }
+.character-sheet :where(.text-neutral-500, .text-neutral-600, .text-neutral-700) { color: #a3a3a3; }
+.character-sheet .border-glow-card, .character-sheet .border-glow-inner { min-width: 0; }
+.character-sheet :where(button, a, input, select, textarea):focus-visible, nav a:focus-visible, .combat-page :where(button, a, input):focus-visible { outline: 2px solid #c4b5fd; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .reveal { transition: none !important; transform: none !important; } .character-sheet *, .combat-page * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+@media (max-width: 639px) { .character-sheet .border-glow-card, .combat-page .border-glow-card { --glow-padding: 12px !important; } }
