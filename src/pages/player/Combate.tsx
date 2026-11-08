@@ -69,7 +69,7 @@ type ParticipantRow = {
 
 type CharacterData = {
   id: string
-  user_id: string
+  user_id: string | null
   name: string
   portrait_url: string | null
   level: number

@@ -93,7 +93,7 @@ const EQUIPMENT_SLOTS = [
 
 type CharacterRow = {
   id: string
-  user_id: string
+  user_id: string | null
   name: string
   title: string | null
   class_id: string | null
@@ -264,9 +264,9 @@ export default function MinhaFicha() {
     return (
       <div className="mx-auto max-w-lg px-6 py-24 text-center">
         <p className="font-title font-semibold text-xl text-neutral-200">Nenhuma ficha encontrada.</p>
-        {isMestre && (
-          <Link to="/player/ficha/criar" className="mt-4 inline-block font-body text-sm text-neutral-400 hover:text-white">
-            Criar a primeira ficha →
+        {isMestre && !id && (
+          <Link to="/player/minha-ficha/criar" className="mt-4 inline-block font-body text-sm text-neutral-400 hover:text-white">
+            Criar minha ficha →
           </Link>
         )}
       </div>
@@ -309,8 +309,9 @@ export default function MinhaFicha() {
   }
 
   async function handleDeleteFicha() {
-    await supabase.rpc('delete_character_with_login', { p_character_id: character!.id })
-    navigate('/player/mestre')
+    const { error } = await supabase.rpc('delete_character_with_login', { p_character_id: character!.id })
+    if (error) { setSaveError('Não foi possível excluir a ficha.'); return }
+    navigate(character!.user_id === null ? '/player/mestre/npcs' : '/player/mestre')
   }
 
   async function addAbility(name: string, desc: string, tier: TierId, level: number, tipoEfeito: TipoEfeito) {
@@ -385,8 +386,8 @@ export default function MinhaFicha() {
 
       <Reveal trigger="mount" className="flex flex-wrap items-center justify-between gap-2">
         {canEdit ? (
-          <Link to="/player/mestre/elementalistas" className="font-body text-xs text-neutral-500 transition-colors duration-300 hover:text-white">
-            ← Todas as fichas
+          <Link to={character.user_id === null ? '/player/mestre/npcs' : '/player/mestre/elementalistas'} className="font-body text-xs text-neutral-500 transition-colors duration-300 hover:text-white">
+            ← {character.user_id === null ? 'Personagens do Mundo' : 'Todas as fichas'}
           </Link>
         ) : (
           <span />

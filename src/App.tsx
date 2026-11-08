@@ -24,6 +24,9 @@ export default function App() {
       <SiteBackground />
       <Navbar />
       <Routes>
+         <Route path="/player/minha-ficha/criar" element={<ProtectedRoute><CriarFicha key="self" mode="self" /></ProtectedRoute>} />
+         <Route path="/player/mestre/npcs" element={<ProtectedRoute><PainelElementalistas key="npcs" npc /></ProtectedRoute>} />
+         <Route path="/player/mestre/npcs/criar" element={<ProtectedRoute><CriarFicha key="npc" mode="npc" /></ProtectedRoute>} />
         <Route path="/" element={<Home />} />
         <Route path="/codex" element={<Codex />} />
         <Route path="/livro" element={<Livro />} />

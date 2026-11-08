@@ -15,6 +15,7 @@ type CharacterSummary = {
 
 function FichaCard({ character, onDeleted }: { character: CharacterSummary; onDeleted: (id: string) => void }) {
   const [confirming, setConfirming] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   async function handleDelete() {
@@ -22,6 +23,7 @@ function FichaCard({ character, onDeleted }: { character: CharacterSummary; onDe
     const { error } = await supabase.rpc('delete_character_with_login', { p_character_id: character.id })
     setDeleting(false)
     if (!error) onDeleted(character.id)
+    else setDeleteError('Não foi possível excluir a ficha. Tente novamente.')
   }
 
   return (
@@ -33,6 +35,7 @@ function FichaCard({ character, onDeleted }: { character: CharacterSummary; onDe
           <p className="mt-2 font-body text-xs text-neutral-500">Nível {character.level}</p>
         </Link>
 
+        {deleteError && <p role="alert" className="mt-3 text-sm text-red-400">{deleteError}</p>}
         {confirming ? (
           <div className="mt-3 flex items-center gap-2 border-t border-neutral-800 pt-3">
             <span className="font-body text-xs text-neutral-400">Excluir de vez?</span>
@@ -64,45 +67,52 @@ function FichaCard({ character, onDeleted }: { character: CharacterSummary; onDe
   )
 }
 
-export default function PainelElementalistas() {
+export default function PainelElementalistas({ npc = false }: { npc?: boolean }) {
   const { isMestre } = useAuth()
   const [characters, setCharacters] = useState<CharacterSummary[] | null>(null)
 
+  const [loadError, setLoadError] = useState(false)
+
   useEffect(() => {
     if (!isMestre) return
-    supabase
+    setCharacters(null)
+    setLoadError(false)
+    let cancelled = false
+    const query = supabase
       .from('characters')
       .select('id, name, title, level')
       .order('name')
-      .then(({ data, error }) => setCharacters(error ? [] : (data ?? [])))
-  }, [isMestre])
+    const filtered = npc ? query.is('user_id', null) : query.not('user_id', 'is', null)
+    filtered.then(({ data, error }) => { if (!cancelled) { setLoadError(!!error); setCharacters(data ?? []) } })
+    return () => { cancelled = true }
+  }, [isMestre, npc])
 
   if (!isMestre) return <Navigate to="/player" replace />
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-16">
-      <Reveal className="flex items-start justify-between">
+    <div className="character-sheet mx-auto max-w-4xl px-6 py-16">
+      <Reveal trigger="mount" className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-title font-bold text-3xl">Elementalistas</h1>
-          <p className="mt-2 font-body text-neutral-400">Crie, edite ou remova qualquer ficha.</p>
+          <h1 className="font-title font-bold text-3xl">{npc ? 'Personagens do Mundo (NPCs)' : 'Elementalistas'}</h1>
+          <p className="mt-2 font-body text-neutral-400">{npc ? 'Gerencie personagens sem login, usando todos os recursos da ficha.' : 'Crie, edite ou remova as fichas vinculadas aos jogadores.'}</p>
         </div>
         <Link to="/player/mestre" className="font-body text-xs text-neutral-500 transition-colors duration-300 hover:text-white">
           ← Área do Mestre
         </Link>
       </Reveal>
 
-      <Reveal delay={80}>
+      <Reveal trigger="mount" delay={80}>
         <Link
-          to="/player/ficha/criar"
+          to={npc ? '/player/mestre/npcs/criar' : '/player/ficha/criar'}
           className="mt-6 flex w-fit items-center gap-2 rounded-md bg-white px-4 py-2.5 font-body text-sm font-semibold text-neutral-950 transition-all duration-300 ease-out hover:bg-neutral-200 hover:scale-[1.03]"
         >
           <Plus size={16} strokeWidth={2} />
-          Criar Ficha
+          {npc ? 'Criar NPC' : 'Criar Ficha'}
         </Link>
       </Reveal>
 
-      <Reveal delay={140} className="mt-8">
-        {characters === null ? (
+      <Reveal trigger="mount" delay={140} className="mt-8">
+        {loadError ? <p role="alert" className="text-red-400">Não foi possível carregar as fichas. Recarregue a página.</p> : characters === null ? (
           <p className="font-body text-sm text-neutral-500">Carregando...</p>
         ) : characters.length === 0 ? (
           <div className="rounded-lg border border-dashed border-neutral-800 p-10 text-center">
