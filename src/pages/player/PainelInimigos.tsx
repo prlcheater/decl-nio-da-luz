@@ -84,10 +84,10 @@ function AddEnemyCard({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex min-h-[104px] flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-neutral-800 font-body text-sm text-neutral-500 transition-colors duration-300 hover:border-neutral-600 hover:text-white"
+        className="flex w-fit items-center gap-2 rounded-md bg-white px-4 py-2.5 font-body text-sm font-semibold text-neutral-950 transition-all duration-300 ease-out hover:bg-neutral-200 hover:scale-[1.03]"
       >
         <Plus size={16} strokeWidth={2} />
-        Cadastrar inimigo
+        Criar inimigo
       </button>
     )
   }
@@ -296,13 +296,17 @@ export default function PainelInimigos() {
         </Link>
       </Reveal>
 
+      <Reveal delay={80} className="mt-6">
+        <AddEnemyCard elements={elements} onAdd={addEnemy} />
+      </Reveal>
+
       <Reveal delay={100} className="mt-8">
         <h2 className="font-title font-semibold text-xl text-neutral-100">Fichas</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {enemies.map((enemy) => (
             <EnemyCard key={enemy.id} enemy={enemy} />
           ))}
-          <AddEnemyCard elements={elements} onAdd={addEnemy} />
+
         </div>
       </Reveal>
 
@@ -310,7 +314,6 @@ export default function PainelInimigos() {
         <div className="flex items-center justify-between">
           <h2 className="font-title font-semibold text-xl text-neutral-100">Instâncias em jogo</h2>
         </div>
-        <p className="mt-2 text-sm text-neutral-400">Cópias avulsas para controle manual. Para uma luta, escolha as quantidades na preparação do Combate.</p>
         {instanceError && <p role="alert" className="mt-3 text-red-300">{instanceError}</p>}
         {enemies.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
