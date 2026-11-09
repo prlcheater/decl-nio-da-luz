@@ -210,3 +210,137 @@ assert.equal(await val(`select has_function_privilege('authenticated','combat_us
 assert.equal(await val(`select has_function_privilege('authenticated','combat_participant_base(uuid)','execute')`), false)
 console.log('OK: combat_apply_hp revogado; só as RPCs públicas ficam expostas')
 console.log('PASS: fases 2 e 3 no Postgres local')
+
+// ======================= Fases 4 e 5 =======================
+// Aplica o patch 10 sobre o banco já com efeitos e log (caminho real de atualização) e reaplica.
+await db.exec('reset test.uid')
+await db.exec(sql('patch-2026-11-10-elementos-reacoes-fases-4-5.sql'))
+await db.exec(sql('patch-2026-11-10-elementos-reacoes-fases-4-5.sql'))
+console.log('OK: patch 10 aplicado sobre dados existentes e reaplicado')
+assert.equal(await val(`select combat_enabled from abilities where id=$1`, [elemental]), false, 'rascunho elemental antigo segue exigindo revisão')
+await as(M)
+await db.query(`update abilities set combat_enabled = true where id=$1`, [elemental])
+await fails(`update abilities set combat_enabled = true where id=$1`, [fear], /abilities_combat_enabled_supported/)
+
+// Combate novo com ordem fixa: Aya 0, Bren 1, I1 2, I2 3, I3 4.
+await db.exec(`update battle_sessions set status = 'ended' where id = '${S}';
+  update characters set attack = 0, intellect = 0, hp_current = 2000, ep_current = 99999 where id in ('${A}','${B}');
+  update enemies set attack = 0, resistance = 0 where id = '${E}';
+  update enemy_instances set hp_current = 900, ep_current = 99999`)
+const I3 = await val(`insert into enemy_instances(enemy_id,label,hp_current,ep_current) values ('${E}','Sentinela',900,99999) returning id`)
+const S2 = await val(`insert into battle_sessions(status) values ('active') returning id`)
+const part2 = async (c, i, name, side, init) => val(`insert into battle_participants(battle_session_id,character_id,enemy_instance_id,name,side,initiative_roll,initiative_bonus,initiative_total) values ($1,$2,$3,$4,$5,0,0,$6) returning id`, [S2, c, i, name, side, init])
+const qA = await part2(A, null, 'Aya', 'aliado', 50)
+const qB = await part2(B, null, 'Bren', 'aliado', 40)
+const q1 = await part2(null, I1, 'Sentinela', 'inimigo', 30)
+const q2 = await part2(null, I2, 'Sentinela', 'inimigo', 20)
+const q3 = await part2(null, I3, 'Sentinela', 'inimigo', 10)
+const turn = async (idx) => { await as(M); await db.query(`update battle_sessions set current_turn_index = $1 where id = $2`, [idx, S2]) }
+const el = (element, o = {}) => eff({ element, appliesElement: true, duration: 2, ...o })
+const onda = await mk('character', A, 'Onda', 'comum', [el('Marine')])
+const chama = await mk('character', A, 'Chama', 'comum', [el('Ignis')])
+const gelo = await mk('character', A, 'Gelo', 'comum', [el('Glácis')])
+const raio = await mk('character', A, 'Raio', 'comum', [el('Élix')])
+const vento = await mk('character', A, 'Vento', 'comum', [el('Galeo')])
+const duplo = await mk('character', A, 'Chama dupla', 'comum', [el('Ignis'), el('Ignis')])
+const orvalho = await mk('character', B, 'Orvalho', 'comum', [el('Marine', { kind: 'escudo', scaler: 'resistance', target: 'ally' })])
+const broto = await mk('character', B, 'Broto', 'comum', [el('Gaia', { kind: 'cura', scaler: 'intellect', target: 'ally' })])
+const jato = await mk('enemy', E, 'Jato', 'comum', [el('Marine')])
+assert.equal(await val(`select combat_enabled from abilities where id=$1`, [onda]), true, 'elemental nova nasce habilitada')
+const marks = async (pid) => (await db.query(`select element from battle_effects where target_participant_id=$1 and kind='marca' order by element`, [pid])).rows.map((r) => r.element)
+// Ataque 0 → dado 0: bruto = 3 (×2 se crítico). Com +50%: 5 (ou 9).
+const amplified = (raw) => assert.ok([5, 9].includes(raw), 'esperava bruto amplificado 5/9, veio ' + raw)
+
+// Fase 4: marca com origem e duração; mesmo elemento renova sem reagir.
+await turn(0); await as(P1)
+let r = await use(uuid(), qA, onda, q1)
+assert.equal(r.effects[0].mark, 'Marine')
+assert.equal(await val(`select source_participant_id from battle_effects where target_participant_id=$1 and kind='marca'`, [q1]), qA)
+r = await use(uuid(), qA, onda, q1)
+assert.equal(r.effects[0].reaction, undefined)
+assert.deepEqual(await marks(q1), ['Marine'])
+console.log('OK: marca elemental com origem/duração; mesmo elemento renova sem reação')
+
+// Vaporização: consome Marine, não deixa Ignis.
+r = await use(uuid(), qA, chama, q1)
+assert.equal(r.effects[0].reaction.name, 'vaporizacao')
+assert.equal(r.effects[0].reaction.consumed, 'Marine')
+amplified(r.effects[0].raw)
+assert.deepEqual(await marks(q1), [])
+// Derretimento.
+await use(uuid(), qA, gelo, q3)
+r = await use(uuid(), qA, chama, q3)
+assert.equal(r.effects[0].reaction.name, 'derretimento'); amplified(r.effects[0].raw)
+// Par sem reação (Ignis + Élix aqui não está no lote): marcas coexistem, golpe normal.
+await use(uuid(), qA, chama, q3)
+r = await use(uuid(), qA, raio, q3)
+assert.equal(r.effects[0].reaction, undefined)
+assert.deepEqual(await marks(q3), ['Ignis', 'Élix'].sort())
+await db.exec(`delete from battle_effects where battle_session_id = '${S2}'`)
+console.log('OK: Vaporização e Derretimento amplificam e consomem a marca; par fora do lote não cancela marcas')
+
+// Congelamento.
+await use(uuid(), qA, onda, q2)
+r = await use(uuid(), qA, gelo, q2)
+assert.equal(r.effects[0].reaction.name, 'congelamento')
+const frozen = await one(`select amount, remaining_turns, label from battle_effects where target_participant_id=$1 and kind='debuff' and attribute='agility'`, [q2])
+assert.deepEqual({ ...frozen }, { amount: 3, remaining_turns: 1, label: 'Congelado' })
+
+// Condução: salta para até 2 outros adversários com Marine da equipe e consome as marcas deles.
+for (const q of [q1, q2, q3]) await use(uuid(), qA, onda, q)
+const hpBefore = { i2: await hp('enemy_instances', I2), i3: await hp('enemy_instances', I3) }
+r = await use(uuid(), qA, raio, q1)
+assert.equal(r.effects[0].reaction.name, 'conducao')
+const sec = r.effects[0].reaction.secondary
+assert.deepEqual(sec.map((x) => x.target).sort(), [q2, q3].sort())
+assert.ok(sec.every((x) => x.raw === Math.round(r.effects[0].raw * 0.5)))
+assert.equal(await hp('enemy_instances', I2), hpBefore.i2 - sec.find((x) => x.target === q2).hp_loss)
+for (const q of [q1, q2, q3]) assert.deepEqual(await marks(q), [], 'Condução consome as marcas usadas')
+assert.ok(sec.every((x) => x.target !== qA && x.target !== qB), 'sem fogo amigo')
+
+// Alastramento: fogo atinge até 2 outros adversários (25%), nunca aliados.
+await use(uuid(), qA, chama, q2)
+r = await use(uuid(), qA, vento, q2)
+assert.equal(r.effects[0].reaction.name, 'alastramento')
+assert.deepEqual(r.effects[0].reaction.secondary.map((x) => x.target).sort(), [q1, q3].sort())
+assert.ok(r.effects[0].reaction.secondary.every((x) => x.raw === Math.round(r.effects[0].raw * 0.25)))
+
+// Uma reação por alvo por ação: o 2º efeito deixa marca em vez de reagir de novo.
+await use(uuid(), qA, onda, q1)
+r = await use(uuid(), qA, duplo, q1)
+assert.equal(r.effects[0].reaction.name, 'vaporizacao')
+assert.equal(r.effects[1].reaction, undefined)
+assert.equal(r.effects[1].mark, 'Ignis')
+console.log('OK: Congelamento, Condução e Alastramento (sem atingir aliados); uma reação por alvo por ação')
+
+// Germinação: preparação de aliado (Marine via barreira) + cura Gaia = +50%.
+await db.exec(`update characters set hp_current = 100 where id = '${A}'`)
+await turn(1); await as(P2)
+await use(uuid(), qB, orvalho, qA)
+assert.deepEqual(await marks(qA), ['Marine'])
+r = await use(uuid(), qB, broto, qA)
+assert.equal(r.effects[0].reaction.name, 'germinacao'); amplified(r.effects[0].raw)
+
+// Marca posta pelo ADVERSÁRIO não beneficia: Marine do inimigo em Aya + cura Gaia = sem reação.
+await db.exec(`delete from battle_effects where battle_session_id = '${S2}'`)
+await turn(2)
+r = await use(uuid(), q1, jato, qA)
+assert.equal(r.effects[0].mark, 'Marine')
+await turn(1); await as(P2)
+r = await use(uuid(), qB, broto, qA)
+assert.equal(r.effects[0].reaction, undefined, 'marca inimiga não gera Germinação')
+assert.deepEqual(await marks(qA), ['Gaia', 'Marine'])
+// E a marca da própria equipe no inimigo não serve ao inimigo: Marine de Aya em I1, inimigo cura? (inimigo não tem cura) —
+// equivalente: Jato (Marine, inimigo) em Aya não reage com marca Marine da equipe aliada.
+console.log('OK: Germinação em aliado; marca do adversário não gera reação a favor de quem a recebeu')
+
+// Expiração da marca na contagem de turnos do alvo.
+await db.exec(`delete from battle_effects where battle_session_id = '${S2}'`)
+await turn(0); await as(P1)
+await use(uuid(), qA, onda, q3) // duração 2
+await turn(4); await db.query(`select combat_next_turn($1, 4)`, [S2])
+assert.equal(await val(`select remaining_turns from battle_effects where target_participant_id=$1 and kind='marca'`, [q3]), 1)
+await turn(4); const t2 = (await db.query(`select combat_next_turn($1, 4) r`, [S2])).rows[0].r
+assert.deepEqual(t2.expired.map((x) => x.element), ['Marine'])
+console.log('OK: marca expira nos turnos do alvo e aparece no registro')
+console.log('PASS: fases 4 e 5 no Postgres local')

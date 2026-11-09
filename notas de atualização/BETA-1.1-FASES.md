@@ -9,8 +9,8 @@ Atualizado em 08/11/2026. Este checklist é o acompanhamento operacional do [pla
 - [x] **Fase 1 — Criador estruturado (implementação local).** Formulário compartilhado em jogadores/NPCs/inimigos; categoria, escalador, elemento opcional, blocos adicionais e rascunhos; compatibilidade com habilidades antigas.
 - [x] **Fase 2 — Buffs, debuffs e barreiras (implementação local, 09/11).** Atributos efetivos, duração em turnos do alvo, expiração e barreira separada do PV.
 - [x] **Fase 3 — Execução confiável (implementação local, 09/11).** Turno, autoria, alvo, efeito, gasto, recarga e log no servidor; teste de execução por Intelecto opcional por combate.
-- [ ] **Fase 4 — Estados elementais.** Aplicação, origem, duração e ícones no combate.
-- [ ] **Fase 5 — Primeiras reações.** Vaporização e Congelamento; depois Alastramento e Condução.
+- [x] **Fase 4 — Estados elementais (implementação local, 10/11).** Marca aplicada, origem, duração e ícones no combate.
+- [x] **Fase 5 — Primeiras reações (implementação local, 10/11).** Vaporização, Derretimento, Congelamento, Condução, Alastramento e Germinação.
 - [ ] **Fase 6 — Ensaio de combate.** Habilidades reais da party, ajustes matemáticos e encontro completo.
 
 Esse faseamento substitui a ordem operacional A–F do plano inicial; o conteúdo e os requisitos do plano detalhado continuam como referência.
@@ -107,6 +107,54 @@ Encerrar combates em andamento antes de aplicar. Rollback: o patch é aditivo; p
 - `npm.cmd run build`: passa (aviso de tamanho do bundle preexistente).
 - Não testado: RLS e Realtime no Supabase real (PGlite roda como superusuário).
 
-## Próxima etapa — Fase 4
+## Fases 4 e 5 — Entrega (10/11/2026)
 
-Estados elementais (marca aplicada, origem, duração e ícone), reaproveitando `battle_effects` e a mesma resolução no servidor. Antes, Paulo confirmar as regras provisórias acima.
+Branch: `feat/beta-1.1-abilities`. Patch: `supabase/patch-2026-11-10-elementos-reacoes-fases-4-5.sql` — aplicar **depois** do de 09/11. **Não reaplicar o de 09/11 depois deste** (recolocaria a função antiga).
+
+**Fase 4 — marcas elementais**
+- Efeito com “aplicar marca elemental” deixa uma marca do elemento no destinatário, guardada em `battle_effects` (tipo `marca`) com origem, habilidade e duração em turnos do alvo. Afinidade da ficha não aplica marca.
+- Mesmo elemento reaplicado renova (maior duração). Elementos diferentes sem reação coexistem; nada é cancelado.
+- Aplicação elemental deixou de ser rascunho. Habilidades novas nascem habilitadas; rascunhos elementais antigos pedem “Revisei — habilitar no combate”.
+- Combate: chip `◎ Elemento · Nt` na ordem de iniciativa; registro mostra “marca X por N turno(s)” e a expiração.
+
+**Fase 5 — reações (lote 1)**
+
+Disparam quando um efeito **com aplicação elemental** atinge um alvo que já tem marca de **outro** elemento posta pela **mesma equipe** do executor.
+
+| Reação | Par | Exige | Efeito (provisório) |
+|---|---|---|---|
+| Vaporização | Marine + Ignis | dano em adversário | +50% no dano bruto do golpe |
+| Derretimento | Ignis + Glácis | dano em adversário | +50% no dano bruto do golpe |
+| Congelamento | Marine + Glácis | dano ou debuff em adversário | “Congelado”: Agilidade −3 por 1 turno do alvo |
+| Condução | Marine + Élix | dano em adversário | Salta para até 2 outros adversários com marca Marine da sua equipe: 50% do dano bruto cada, consumindo essas marcas |
+| Alastramento | Ignis + Galeo | dano em adversário | Atinge até 2 outros adversários: 25% do dano bruto cada |
+| Germinação | Marine + Gaia | cura em aliado | +50% na cura |
+
+- Amplificação entra antes da mitigação; danos secundários passam por mitigação e barreira de cada alvo.
+- A reação consome a marca preparada, e o golpe que reage não deixa marca nova.
+- Uma reação por alvo por ação. Danos secundários não disparam reação; não há cadeia.
+- Com várias marcas elegíveis, vale a **mais antiga** (o servidor escolhe; a escolha pelo jogador fica para depois).
+- Marca posta pelo adversário nunca gera reação a favor de quem a recebeu. Reações hostis só atingem adversários; Germinação só cura aliados.
+- Prévia no combate: ao escolher o alvo, cada habilidade mostra “Reação prevista: …” com base nas marcas da sua equipe. O servidor reconfere tudo, então a prévia não é garantia.
+- Registro e número flutuante mostram a reação (“Vaporização! Marine + Ignis: …”), incluindo os alvos secundários.
+- Demais pares do catálogo (BETA-1.1-COMBATE.md §7) seguem **sem efeito** até haver as regras de que dependem (precisão, Fragilidade, regeneração periódica, ocultação, posição).
+
+**Para Paulo calibrar:** os percentuais (+50%, 50%, 25%), o Congelado (Agilidade −3 por 1 turno; sem regra de imobilização ainda), a duração das marcas (definida em cada habilidade, 1–20 turnos), o consumo das marcas e a escolha automática da marca mais antiga.
+
+### Banco e publicação — fases 4 e 5
+
+- [x] Patch testado em Postgres local: aplicado sobre um banco já com efeitos e log das fases 2 e 3 e depois reaplicado.
+- [ ] Aplicar no Supabase **na sequência**: 09/11 → 10/11 → publicar o frontend.
+- [ ] Revisar as habilidades elementais antigas na ficha e habilitar.
+- [ ] Ensaiar as seis reações num combate real.
+
+### Verificações locais — fases 4 e 5
+
+- `node tests/combat-sql.mjs . <pasta-do-pglite>`: marca com origem e duração; renovação sem reação; as seis reações (amplificação, consumo, Congelado, alvos secundários de Condução e Alastramento sem atingir aliados); uma reação por alvo por ação; marca inimiga não gera Germinação; par fora do lote não cancela marcas; expiração no registro. Passou na primeira execução.
+- `node tests/ability-definition.cjs`: suporte a aplicação elemental, habilitação explícita e prévia de reação (simetria, efeito compatível, marca mais antiga, pares bloqueados).
+- `tests/beta-1.0-smoke.cjs` (navegador): chip da marca, “Reação prevista: Vaporização” e reação no registro. Os outros dois testes de navegador e o build também passam.
+- Não testado: RLS e Realtime no Supabase real.
+
+## Próxima etapa — Fase 6
+
+Ensaio de combate com as habilidades reais da party. Depende de Paulo: aplicar os patches de 09 e 10/11, cadastrar ou revisar os poderes reais, confirmar as regras provisórias das fases 2 a 5 e conduzir um encontro de teste com a mesa (mestre, jogadores, NPC e inimigos repetidos, no celular). Depois disso, ajustar os números com base no registro do combate.

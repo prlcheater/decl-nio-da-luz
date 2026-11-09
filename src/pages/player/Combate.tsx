@@ -1,3 +1,4 @@
+import { ACTIVE_REACTIONS, predictReaction, type ReactionId } from '@/lib/reactions'
 import { abilityEffects, abilitySummary, abilityTargeting, isAbilityReady, ATTRIBUTES, type AbilityDefinition, type Attribute } from '@/lib/abilityDefinition'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -59,11 +60,17 @@ type BattleRow = {
 type EffectRow = {
   id: string
   target_participant_id: string
-  kind: 'buff' | 'debuff' | 'barreira'
+  kind: 'buff' | 'debuff' | 'barreira' | 'marca'
   attribute: Attribute | ''
   amount: number
   remaining_turns: number | null
+  element: string | null
+  label: string | null
+  source_participant_id: string | null
+  updated_at: string
 }
+
+type ReactionInfo = { name: ReactionId; consumed: string; element: string; secondary: ActionEffect[] }
 
 type ActionEffect = {
   kind: 'dano' | 'cura' | 'escudo' | 'buff' | 'debuff'
@@ -79,6 +86,9 @@ type ActionEffect = {
   amount?: number
   duration?: number
   hp_max?: number
+  mark?: string
+  mark_turns?: number
+  reaction?: ReactionInfo
 }
 
 type ActionResult = {
@@ -93,7 +103,7 @@ type ActionResult = {
   effects: ActionEffect[]
 }
 
-type ActionRow = { id: string; kind: 'ability' | 'turn'; round_number: number; created_at: string; result: ActionResult & { ended?: string; expired?: { kind: string; attribute: string }[] } }
+type ActionRow = { id: string; kind: 'ability' | 'turn'; round_number: number; created_at: string; result: ActionResult & { ended?: string; expired?: { kind: string; attribute: string; element?: string | null; label?: string | null }[] } }
 
 type ParticipantRow = {
   id: string
@@ -159,6 +169,7 @@ type Target = {
   hpCurrent: number
   hpMax: number
   resistance: number
+  marks: { element: string; sourceSide: 'aliado' | 'inimigo' | null }[]
 }
 
 type DamageToast = {
@@ -172,6 +183,7 @@ type DamageToast = {
   severity: DamageSeverity
   color: string
   critico: boolean
+  reaction?: string
 }
 
 type RollToast = {
@@ -192,6 +204,17 @@ type DistributiveOmit<T, K extends keyof never> = T extends unknown ? Omit<T, K>
 
 // Explica o cálculo devolvido pelo servidor: bruto → mitigação → barreira → PV.
 function describeEffect(e: ActionEffect): string {
+  const base = describeEffectCore(e)
+  if (e.reaction) {
+    const r = ACTIVE_REACTIONS[e.reaction.name]
+    const extra = e.reaction.secondary.length ? ` (${e.reaction.secondary.map(describeEffectCore).join('; ')})` : ''
+    return `${base} — ${r.name}! ${e.reaction.consumed} + ${e.reaction.element}: ${r.effect}${extra}`
+  }
+  if (e.mark) return `${base} · marca ${e.mark} por ${e.mark_turns} turno(s)`
+  return base
+}
+
+function describeEffectCore(e: ActionEffect): string {
   switch (e.kind) {
     case 'dano':
       return `${e.target_name}: ${e.raw} bruto − ${e.mitigation} mitigação${e.absorbed ? ` − ${e.absorbed} barreira` : ''} = ${e.hp_loss} de PV perdido`
@@ -220,7 +243,8 @@ function toastFromAction(r: ActionResult): DistributiveOmit<CombatToast, 'id'> {
     return { kind: 'roll', actorLabel: r.actor_name, traitLabel: `Execução falhou · ${r.ability_name}`, total: r.execution.total, critico: false, falhaCritica: true }
   }
   const main = r.effects[0]
-  const base = { kind: 'damage' as const, actorLabel: r.actor_name, targetLabel: main?.target_name ?? '', targetParticipantId: main?.target ?? '', abilityName: r.ability_name, critico: r.critico }
+  const reaction = r.effects.find((e) => e.reaction)?.reaction
+  const base = { kind: 'damage' as const, actorLabel: r.actor_name, targetLabel: main?.target_name ?? '', targetParticipantId: main?.target ?? '', abilityName: r.ability_name, critico: r.critico, reaction: reaction ? ACTIVE_REACTIONS[reaction.name].name : undefined }
   if (!main) return { ...base, amount: 0, severity: 'branco', color: '#f5f5f5' }
   if (main.kind === 'dano') {
     const sev = damageSeverity({ amount: main.hp_loss ?? 0, hpMax: main.hp_max ?? 0 })
@@ -338,10 +362,13 @@ function EffectChips({ list }: { list: EffectRow[] }) {
   return (
     <ul className="mt-1 flex flex-wrap gap-1" aria-label="Estados ativos">
       {list.map((e) => (
-        <li key={e.id} className={'rounded border px-1.5 py-0.5 text-[11px] ' + (e.kind === 'barreira' ? 'border-sky-400/60 text-sky-200' : e.kind === 'buff' ? 'border-violet-400/60 text-violet-200' : 'border-orange-400/60 text-orange-200')}>
-          {e.kind === 'barreira'
-            ? `◆ Barreira ${e.amount}`
-            : `${e.kind === 'buff' ? '▲' : '▼'} ${e.attribute ? ATTRIBUTES[e.attribute] : ''} ${e.kind === 'buff' ? '+' : '−'}${e.amount} · ${e.remaining_turns}t`}
+        <li key={e.id} title={e.kind === 'marca' ? `Marca ${e.element} — pode reagir com outro elemento da mesma equipe` : undefined}
+          className={'rounded border px-1.5 py-0.5 text-[11px] ' + (e.kind === 'marca' ? 'border-cyan-400/60 text-cyan-200' : e.kind === 'barreira' ? 'border-sky-400/60 text-sky-200' : e.kind === 'buff' ? 'border-violet-400/60 text-violet-200' : 'border-orange-400/60 text-orange-200')}>
+          {e.kind === 'marca'
+            ? `◎ ${e.element} · ${e.remaining_turns}t`
+            : e.kind === 'barreira'
+              ? `◆ Barreira ${e.amount}`
+              : `${e.kind === 'buff' ? '▲' : '▼'} ${e.label ? e.label + ': ' : ''}${e.attribute ? ATTRIBUTES[e.attribute] : ''} ${e.kind === 'buff' ? '+' : '−'}${e.amount} · ${e.remaining_turns}t`}
         </li>
       ))}
     </ul>
@@ -392,6 +419,7 @@ function CombatToastLayer({ toasts }: { toasts: CombatToast[] }) {
               className="font-body text-sm uppercase tracking-wide text-neutral-300"
             />
             {t.critico && <Badge label="Crítico!" color="#eab308" />}
+            {t.reaction && <Badge label={t.reaction + '!'} color="#22d3ee" />}
           </div>
         ) : (
           <div key={t.id} className="combat-toast flex flex-col items-center gap-2">
@@ -566,6 +594,7 @@ function AbilityUseRow({
   cooldownRow,
   currentRound,
   allies,
+  targetMarks,
   actorId,
   busy,
   onUse,
@@ -576,6 +605,7 @@ function AbilityUseRow({
   cooldownRow: CooldownRow | null
   currentRound: number
   allies: Target[]
+  targetMarks: string[]
   actorId: string
   busy: boolean
   onUse: (pontoVital: boolean, allyId: string | null) => void
@@ -588,6 +618,10 @@ function AbilityUseRow({
   const [allyId, setAllyId] = useState(actorId)
   const { allySupport } = abilityTargeting(ability.abilities)
   const hasDamage = abilityEffects(ability.abilities).some((e) => e.kind === 'dano')
+  // Prévia (não é garantia): o servidor reconfere marcas e escolhe a mais antiga elegível.
+  const reactionPreview = ability.abilities.definition
+    ? [...new Set(ability.abilities.definition.effects.map((e) => predictReaction(e, targetMarks)).filter((x): x is ReactionId => !!x))]
+    : []
 
   const disabled = busy || !available || epCurrent < cost
 
@@ -598,6 +632,7 @@ function AbilityUseRow({
         <Badge label={TIER_META[tier].label} color={TIER_META[tier].color} />
       </div>
       <p className="mt-1.5 text-sm text-neutral-400">{abilitySummary(ability.abilities)}</p>
+      {reactionPreview.map((id) => <p key={id} className="mt-1.5 text-sm text-cyan-200">Reação prevista: {ACTIVE_REACTIONS[id].name} — {ACTIVE_REACTIONS[id].effect}</p>)}
       {!available && <p className="mt-1.5 font-body text-sm text-red-400">Em recarga — faltam {remaining} rodada(s).</p>}
       {available && epCurrent < cost && <p className="mt-1.5 font-body text-sm text-red-400">Energia insuficiente — faltam {cost - epCurrent} PE.</p>}
       {allySupport && (
@@ -710,6 +745,7 @@ function AbilityPopup({
                 cooldownRow={cooldowns.find((c) => c.ability_id === a.ability_id) ?? null}
                 currentRound={currentRound}
                 allies={allies}
+                targetMarks={target.marks.filter((m) => m.sourceSide === mySide).map((m) => m.element)}
                 actorId={actorId}
                 busy={busy}
                 onUse={(pontoVital, allyId) => {
@@ -852,7 +888,7 @@ export default function Combate() {
     }
 
     const [{ data: effectRows }, { data: actionRows }] = await Promise.all([
-      supabase.from('battle_effects').select('id, target_participant_id, kind, attribute, amount, remaining_turns').eq('battle_session_id', battleRow.id),
+      supabase.from('battle_effects').select('id, target_participant_id, kind, attribute, amount, remaining_turns, element, label, source_participant_id, updated_at').eq('battle_session_id', battleRow.id),
       supabase.from('battle_actions').select('id, kind, round_number, created_at, result').eq('battle_session_id', battleRow.id).order('created_at', { ascending: false }).limit(12),
     ])
     setEffects((effectRows as EffectRow[]) ?? [])
@@ -1069,6 +1105,14 @@ export default function Combate() {
   const actingEnemyInstance = currentParticipant?.enemy_instance_id ? instancesById[currentParticipant.enemy_instance_id] : null
   const canAct = isMestre || (!!actingCharacter && actingCharacter.user_id === authSession?.user.id)
 
+  // Marcas no participante, da mais antiga para a mais nova, com a equipe de quem aplicou.
+  function marksOf(participantId: string): Target['marks'] {
+    return effects
+      .filter((e) => e.kind === 'marca' && e.target_participant_id === participantId && e.element)
+      .sort((a, b) => cmp(a.updated_at, b.updated_at) || cmp(a.id, b.id))
+      .map((e) => ({ element: e.element!, sourceSide: participants.find((p) => p.id === e.source_participant_id)?.side ?? null }))
+  }
+
   const targets: Target[] = sorted
     .map((p): Target | null => {
       if (p.character_id) {
@@ -1084,6 +1128,7 @@ export default function Combate() {
           hpCurrent: c.hp_current,
           hpMax: calculateHpMax({ resistance: c.resistance, level: c.level }),
           resistance: c.resistance,
+          marks: marksOf(p.id),
         }
       }
       if (p.enemy_instance_id) {
@@ -1100,6 +1145,7 @@ export default function Combate() {
           hpCurrent: i.hp_current,
           hpMax: Math.round(calculateHpMax({ resistance: i.enemies.resistance, level: i.enemies.level }) * mult),
           resistance: i.enemies.resistance,
+          marks: marksOf(p.id),
         }
       }
       return null
@@ -1281,7 +1327,7 @@ export default function Combate() {
                 <span className="mr-2 text-xs tabular-nums text-neutral-500">R{a.round_number}</span>
                 {a.kind === 'ability'
                   ? describeAction(a.result)
-                  : `Fim do turno de ${participants.find((p) => p.id === a.result.ended)?.name ?? '—'}${a.result.expired?.length ? ` · expirou: ${a.result.expired.map((x) => (x.attribute ? ATTRIBUTES[x.attribute as Attribute] : x.kind)).join(', ')}` : ''}`}
+                  : `Fim do turno de ${participants.find((p) => p.id === a.result.ended)?.name ?? '—'}${a.result.expired?.length ? ` · expirou: ${a.result.expired.map((x) => (x.element ? 'marca ' + x.element : x.label ?? (x.attribute ? ATTRIBUTES[x.attribute as Attribute] : x.kind))).join(', ')}` : ''}`}
               </li>
             ))}
           </ol>

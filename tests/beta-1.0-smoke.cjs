@@ -64,10 +64,10 @@ async function main(){
      entity.hp_current=Math.max(0,entity.hp_current-10);
      actorEntity.ep_current-=5;
      result={action_id:body.p_action_id,actor:lastActor.id,actor_name:lastActor.name,ability_name:ability.abilities.name,cost:5,critico:false,ponto_vital:false,execution:null,
-       effects:[{kind:'dano',target:target.id,target_name:target.name,raw:20,mitigation:10,absorbed:0,hp_loss:10,hp_max:2000}]};
+       effects:[{kind:'dano',target:target.id,target_name:target.name,raw:20,mitigation:10,absorbed:0,hp_loss:10,hp_max:2000,...(state.reactNext?{reaction:{name:'vaporizacao',consumed:'Marine',element:'Ignis',secondary:[]}}:{})}]};
      state.actions=[{id:body.p_action_id,kind:'ability',round_number:1,created_at:new Date().toISOString(),result},...(state.actions||[])];
    } else if(table==='battle_actions') result=state.actions||[];
-   else if(table==='battle_effects') result=[];
+   else if(table==='battle_effects') result=state.effects||[];
    if(status===200 && req.headers().accept?.includes('vnd.pgrst.object') && Array.isArray(result))result=result[0]??null;
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(result)});
  });
@@ -137,6 +137,21 @@ async function main(){
  await page.getByRole('button',{name:/Usar/}).last().click();
  await page.waitForTimeout(600);
  assert.equal(state.instances.filter((i,n)=>i.hp_current!==oldHp[n]).length,1,'only targeted copy loses HP');
+ // Fases 4/5: marca Marine da equipe no alvo + habilidade Ignis com aplicação = prévia de Vaporização.
+ const allyP=state.participants.find(p=>p.character_id), foe=state.participants.find(p=>p.enemy_instance_id);
+ state.effects=state.participants.filter(p=>p.enemy_instance_id).map((p,n)=>({id:'fx-'+n,target_participant_id:p.id,kind:'marca',attribute:'',amount:1,remaining_turns:2,element:'Marine',label:null,source_participant_id:allyP.id,updated_at:'2026-11-10T00:00:00Z'}));
+ assert.ok(foe);
+ ability.abilities={...ability.abilities,definition:{version:1,effects:[{kind:'dano',scaler:'attack',element:'Ignis',appliesElement:true,target:'enemy',attribute:null,amount:null,duration:2,state:null}]},combat_enabled:true};
+ await page.reload();
+ await page.getByRole('region',{name:'Ordem de iniciativa'}).getByText('◎ Marine · 2t').first().waitFor();
+ await page.getByRole('button',{name:'Usar Habilidade',exact:true}).click();
+ await page.getByRole('button',{name:enemy.name,exact:true}).first().click();
+ await page.getByText(/Reação prevista: Vaporização/).waitFor();
+ state.reactNext=true;
+ await page.getByRole('button',{name:/Usar/}).last().click();
+ await page.getByRole('region',{name:'Registro do combate'}).getByText(/Vaporização! Marine \+ Ignis/).first().waitFor();
+ state.reactNext=false;state.effects=[];
+ ability.abilities={name:'Pulso de teste',description:'Habilidade de teste.',type:'comum',tipo_efeito:'dano'};
  await fit('combat');
  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
  await page.waitForTimeout(1200);

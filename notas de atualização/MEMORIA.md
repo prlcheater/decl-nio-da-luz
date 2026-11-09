@@ -240,3 +240,7 @@ Criador compartilhado com escalador configurável, definição estruturada e ras
 ### 09/11/2026 — Beta 1.1, fases 2 e 3 implementadas localmente
 
 Buffs, debuffs e barreira (escudo deixou de curar) com atributos efetivos e expiração por turno do alvo. Ação de habilidade e passagem de turno resolvidas no servidor numa transação, com log persistido e idempotência. Rascunhos antigos exigem habilitação explícita do mestre. Patch `patch-2026-11-09-combate-fases-2-3.sql` testado em Postgres local, ainda não aplicado no Supabase. Regras provisórias e checklist de publicação em [BETA-1.1-FASES.md](BETA-1.1-FASES.md).
+
+### 10/11/2026 — Beta 1.1, fases 4 e 5 implementadas localmente
+
+Marcas elementais com origem e duração, e o primeiro lote de reações: Vaporização, Derretimento, Congelamento, Condução, Alastramento e Germinação. Os valores são provisórios. Patch `patch-2026-11-10-elementos-reacoes-fases-4-5.sql` testado em Postgres local, ainda não aplicado no Supabase (ordem: 09 → 10 → frontend). Detalhes em [BETA-1.1-FASES.md](BETA-1.1-FASES.md).

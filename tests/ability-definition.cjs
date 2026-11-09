@@ -66,7 +66,25 @@ for(const bad of [
 ])assert.notEqual(validateDefinition(bad),null);
 const elemental=definition([{...damage,element:'Marine',appliesElement:true,duration:2}]);
 assert.equal(validateDefinition(elemental),null);
-assert.equal(isAbilityReady({tipo_efeito:'dano',definition:elemental,combat_enabled:true}),false); // fase 4
+// Fase 4: aplicação elemental é suportada, mas rascunho antigo continua exigindo habilitação.
+assert.equal(isCombatSupported(elemental),true);
+assert.equal(isAbilityReady({tipo_efeito:'dano',definition:elemental}),false);
+assert.equal(isAbilityReady({tipo_efeito:'dano',definition:elemental,combat_enabled:true}),true);
+// Fase 5: prévia espelha o servidor (simétrica, só lote ativo, efeito compatível, marca mais antiga).
+const {predictReaction,reactionBetween}=load('reactions');
+const hit=(element,kind='dano')=>({kind,element,appliesElement:true});
+assert.equal(reactionBetween('Ignis','Marine'),'vaporizacao');
+assert.equal(reactionBetween('Marine','Ignis'),'vaporizacao');
+assert.equal(reactionBetween('Ignis','Granite'),null);
+assert.equal(reactionBetween('Gaia','Umbra'),null);
+assert.equal(predictReaction(hit('Ignis'),['Marine']),'vaporizacao');
+assert.equal(predictReaction(hit('Glácis','debuff'),['Marine']),'congelamento');
+assert.equal(predictReaction(hit('Ignis','debuff'),['Marine']),null);
+assert.equal(predictReaction(hit('Gaia','cura'),['Marine']),'germinacao');
+assert.equal(predictReaction(hit('Gaia'),['Marine']),null);
+assert.equal(predictReaction(hit('Marine'),['Marine']),null);
+assert.equal(predictReaction({kind:'dano',element:'Ignis',appliesElement:false},['Marine']),null);
+assert.equal(predictReaction(hit('Marine'),['Élix','Ignis']),'conducao');
 assert.equal(isAbilityReady({tipo_efeito:'dano',definition:definition([{...damage,element:'Marine'}]),combat_enabled:true}),true);
 assert.equal(isAbilityReady({tipo_efeito:'dano',definition:{version:99,effects:[]}}),false);
 console.log('PASS: legacy mappings, all 5 scalers, explicit enabling, phase 2 support, targeting, elements, target safety, invalid/missing fields and dice scaling.');

@@ -61,7 +61,8 @@ export const COMBAT_SUPPORTED_KINDS: EffectKind[] = ['dano', 'cura', 'escudo', '
 export function isCombatSupported(definition: AbilityDefinition | null | undefined): boolean {
   if (definition == null) return true
   if (validateDefinition(definition)) return false
-  return definition.effects.every(e => COMBAT_SUPPORTED_KINDS.includes(e.kind) && !e.appliesElement)
+  // Fase 4: aplicação elemental deixa marca no destinatário e pode reagir (fase 5).
+  return definition.effects.every(e => COMBAT_SUPPORTED_KINDS.includes(e.kind))
 }
 // Utilizável em combate: legada, ou suportada pelo motor E habilitada pelo mestre.
 // Rascunhos antigos não viram utilizáveis sozinhos quando o motor ganha suporte.
