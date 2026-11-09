@@ -54,13 +54,20 @@ async function main(){
    } else if(table==='battle_participants'){
      if(method==='POST')state.participants=body.map((p,i)=>({...p,id:'p-'+i}));
      result=state.participants;
-   } else if(table==='combat_apply_hp'){
+   } else if(table==='combat_use_ability'){
+     // Simula o servidor (fase 3): o cliente só envia intenção; valor e custo vêm daqui.
      const target=state.participants.find(p=>p.id===body.p_target_participant_id);
      lastActor=state.participants.find(p=>p.id===body.p_actor_participant_id);
+     state.calls=(state.calls||[]).concat(body);
      const entity=target.character_id?char:state.instances.find(i=>i.id===target.enemy_instance_id);
-     entity.hp_current=Math.max(0,Math.min(body.p_hp_max,entity.hp_current+body.p_delta));
-     result=entity.hp_current;
-   }
+     const actorEntity=lastActor.character_id?char:state.instances.find(i=>i.id===lastActor.enemy_instance_id);
+     entity.hp_current=Math.max(0,entity.hp_current-10);
+     actorEntity.ep_current-=5;
+     result={action_id:body.p_action_id,actor:lastActor.id,actor_name:lastActor.name,ability_name:ability.abilities.name,cost:5,critico:false,ponto_vital:false,execution:null,
+       effects:[{kind:'dano',target:target.id,target_name:target.name,raw:20,mitigation:10,absorbed:0,hp_loss:10,hp_max:2000}]};
+     state.actions=[{id:body.p_action_id,kind:'ability',round_number:1,created_at:new Date().toISOString(),result},...(state.actions||[])];
+   } else if(table==='battle_actions') result=state.actions||[];
+   else if(table==='battle_effects') result=[];
    if(status===200 && req.headers().accept?.includes('vnd.pgrst.object') && Array.isArray(result))result=result[0]??null;
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(result)});
  });
@@ -118,7 +125,10 @@ async function main(){
  assert.ok(lastActor?.enemy_instance_id,'enemy performed action');
  assert.equal(state.instances.filter((i,n)=>i.ep_current!==originalEnergy[n]).length,1,'only acting copy spends energy');
  // Select the character turn and damage just one copy.
- const sorted=[...state.participants].sort((a,b)=>b.initiative_total-a.initiative_total||a.name.localeCompare(b.name,'pt-BR')||a.id.localeCompare(b.id));
+ assert.ok(state.calls.every(c=>c.p_action_id&&c.p_ally_target_participant_id===null&&!('p_delta' in c)),'client sends intent only');
+ await page.getByRole('region',{name:'Registro do combate'}).getByText(/10 de PV perdido/).first().waitFor();
+ const cmp=(a,b)=>a<b?-1:a>b?1:0;
+ const sorted=[...state.participants].sort((a,b)=>b.initiative_total-a.initiative_total||cmp(a.name,b.name)||cmp(a.id,b.id));
  state.battle.current_turn_index=sorted.findIndex(p=>p.character_id);
  await page.reload();
  await page.getByRole('button',{name:'Usar Habilidade',exact:true}).click();

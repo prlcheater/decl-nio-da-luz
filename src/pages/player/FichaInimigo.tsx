@@ -1,3 +1,7 @@
+import AbilityBuilder, { type AbilityInput } from '@/components/AbilityBuilder'
+import { saveAbility } from '@/lib/saveAbility'
+import AbilityCombatStatus from '@/components/AbilityCombatStatus'
+import { abilitySummary, EFFECTS, type AbilityDefinition } from '@/lib/abilityDefinition'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -11,7 +15,6 @@ import {
   ChevronUp,
   ChevronDown,
   Pencil,
-  Plus,
   Trash2,
 } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
@@ -63,7 +66,7 @@ type EnemyRow = {
 type AbilityRow = {
   ability_id: string
   level: number
-  abilities: { name: string; description: string | null; type: AbilityTier; tipo_efeito: TipoEfeito }
+  abilities: { name: string; description: string | null; type: AbilityTier; tipo_efeito: TipoEfeito; definition?: AbilityDefinition | null; combat_enabled?: boolean | null }
 }
 
 function Badge({ label, color }: { label: string; color: string }) {
@@ -74,64 +77,6 @@ function Badge({ label, color }: { label: string; color: string }) {
     >
       {label}
     </span>
-  )
-}
-
-function AddAbilityCard({ onAdd }: { onAdd: (name: string, desc: string, tier: AbilityTier, level: number, tipoEfeito: TipoEfeito) => void }) {
-  const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [desc, setDesc] = useState('')
-  const [tier, setTier] = useState<AbilityTier>('comum')
-  const [tipoEfeito, setTipoEfeito] = useState<TipoEfeito>('dano')
-  const [level, setLevel] = useState(1)
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="flex min-h-[120px] flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-neutral-800 font-body text-sm text-neutral-500 transition-colors duration-300 hover:border-neutral-600 hover:text-white"
-      >
-        <Plus size={16} strokeWidth={2} />
-        Adicionar habilidade
-      </button>
-    )
-  }
-
-  function submit() {
-    if (!name.trim()) return
-    onAdd(name.trim(), desc.trim(), tier, level, tipoEfeito)
-    setName('')
-    setDesc('')
-    setTier('comum')
-    setTipoEfeito('dano')
-    setLevel(1)
-    setOpen(false)
-  }
-
-  return (
-    <GlowCard contentClassName="p-5">
-      <div className="flex flex-col gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome da habilidade" className={inputClass} />
-        <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Descrição" rows={2} className={inputClass} />
-        <div className="flex gap-2">
-          <select value={tier} onChange={(e) => setTier(e.target.value as AbilityTier)} className={inputClass}>
-            {ABILITY_TIERS.map((t) => (
-              <option key={t.id} value={t.id}>{t.label}</option>
-            ))}
-          </select>
-          <select value={tipoEfeito} onChange={(e) => setTipoEfeito(e.target.value as TipoEfeito)} className={inputClass}>
-            {TIPO_EFEITO_META.map((e) => (
-              <option key={e.id} value={e.id}>{e.label}</option>
-            ))}
-          </select>
-          <input type="number" min={1} max={10} value={level} onChange={(e) => setLevel(Number(e.target.value))} className={`${inputClass} w-20`} />
-        </div>
-        <div className="flex gap-2">
-          <button onClick={submit} className="flex-1 rounded bg-white py-1.5 font-body text-xs font-semibold text-neutral-950">Salvar</button>
-          <button onClick={() => setOpen(false)} className="rounded border border-neutral-700 px-2.5 py-1.5 font-body text-xs text-neutral-400">Cancelar</button>
-        </div>
-      </div>
-    </GlowCard>
   )
 }
 
@@ -163,7 +108,7 @@ export default function FichaInimigo() {
     if (!data) return
     const { data: abilityRows } = await supabase
       .from('enemy_abilities')
-      .select('ability_id, level, abilities(name, description, type, tipo_efeito)')
+      .select('ability_id, level, abilities(name, description, type, tipo_efeito, definition, combat_enabled)')
       .eq('enemy_id', data.id)
     setAbilities((abilityRows as unknown as AbilityRow[]) ?? [])
   }
@@ -210,15 +155,9 @@ export default function FichaInimigo() {
     persist({ [key]: Math.max(0, enemy![key] + delta) } as Partial<EnemyRow>)
   }
 
-  async function addAbility(name: string, desc: string, tier: AbilityTier, level: number, tipoEfeito: TipoEfeito) {
-    const { data: ability } = await supabase
-      .from('abilities')
-      .insert({ name, description: desc, type: tier, tipo_efeito: tipoEfeito })
-      .select('id')
-      .single()
-    if (!ability) return
-    await supabase.from('enemy_abilities').insert({ enemy_id: enemy!.id, ability_id: ability.id, level })
-    load()
+  async function addAbility(value: AbilityInput) {
+    await saveAbility('enemy', enemy!.id, value)
+    await load()
   }
 
   async function removeAbility(abilityId: string) {
@@ -449,8 +388,10 @@ export default function FichaInimigo() {
                 </div>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   <Badge label={tierMeta.label} color={tierMeta.color} />
-                  <Badge label={efeitoMeta.label} color={efeitoMeta.color} />
+                  <Badge label={a.abilities.definition ? EFFECTS[a.abilities.definition.effects[0]?.kind] ?? 'Rascunho' : efeitoMeta.label} color={efeitoMeta.color} />
                 </div>
+                <p className="mt-2 text-sm text-neutral-300">{abilitySummary(a.abilities)}</p>
+                <AbilityCombatStatus abilityId={a.ability_id} ability={a.abilities} canEdit onChanged={load} />
                 {a.abilities.description && (
                   <p className="mt-2 font-body text-sm text-neutral-500 leading-relaxed">{a.abilities.description}</p>
                 )}
@@ -463,7 +404,7 @@ export default function FichaInimigo() {
               </GlowCard>
             )
           })}
-          <AddAbilityCard onAdd={addAbility} />
+          <AbilityBuilder onAdd={addAbility} />
         </div>
       </Reveal>
 

@@ -2,8 +2,8 @@
 
 Site do RPG de mesa Declínio da Luz: lore pública (Home e Codex) e área logada com ficha, painel do mestre e combate por turnos.
 
-- Estado atual e regras do projeto: [docs/CONTEXTO-PROJETO.md](docs/CONTEXTO-PROJETO.md)
-- Histórico do que foi implementado: [notas de atualização/notas.md](notas%20de%20atualização/notas.md)
+- Memória do projeto (estado atual, regras, problemas conhecidos, histórico): [notas de atualização/MEMORIA.md](notas%20de%20atualização/MEMORIA.md)
+- O que vamos fazer (roadmap e bibliotecas): [notas de atualização/ROADMAP.md](notas%20de%20atualização/ROADMAP.md)
 
 ## Rodar localmente
 

@@ -1,3 +1,7 @@
+import AbilityBuilder, { type AbilityInput } from '@/components/AbilityBuilder'
+import { saveAbility } from '@/lib/saveAbility'
+import AbilityCombatStatus from '@/components/AbilityCombatStatus'
+import { abilityEffects, abilityScaler, abilitySummary, EFFECTS, isAbilityReady, type AbilityDefinition } from '@/lib/abilityDefinition'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -30,7 +34,6 @@ import ImageCropModal from '@/components/ImageCropModal'
 import { ELEMENTS, CLASSES, GRADIENT_COLORS } from '@/lib/gameData'
 import {
   DIFFICULTIES,
-  EFEITO_STATUS_ESCALADOR,
   MAX_LEVEL,
   calculateEpMax,
   calculateHpMax,
@@ -60,7 +63,6 @@ const ABILITY_TIERS = [
   { id: 'especial', label: 'Especial', color: '#818cf8' },
   { id: 'suprema', label: 'Suprema', color: '#f472b6' },
 ] as const
-type TierId = (typeof ABILITY_TIERS)[number]['id']
 
 const ITEM_CATEGORIES = [
   { id: 'comum', label: 'Regular', color: '#9ca3af' },
@@ -119,7 +121,7 @@ type CharacterRow = {
 type AbilityRow = {
   ability_id: string
   level: number
-  abilities: { name: string; description: string | null; type: string; tipo_efeito: string }
+  abilities: { name: string; description: string | null; type: string; tipo_efeito: string; definition?: AbilityDefinition | null; combat_enabled?: boolean | null }
 }
 
 type SkillRow = {
@@ -244,7 +246,7 @@ export default function MinhaFicha() {
     if (!data) return
 
     const [{ data: abilityRows }, { data: skillRows }, { data: equipRows }] = await Promise.all([
-      supabase.from('character_abilities').select('ability_id, level, abilities(name, description, type, tipo_efeito)').eq('character_id', data.id),
+      supabase.from('character_abilities').select('ability_id, level, abilities(name, description, type, tipo_efeito, definition, combat_enabled)').eq('character_id', data.id),
       supabase.from('character_skills_passive').select('skill_id, skills_passive(name, description)').eq('character_id', data.id),
       supabase.from('character_equipment').select('id, item_id, slot, items(name, category)').eq('character_id', data.id),
     ])
@@ -314,15 +316,9 @@ export default function MinhaFicha() {
     navigate(character!.user_id === null ? '/player/mestre/npcs' : '/player/mestre')
   }
 
-  async function addAbility(name: string, desc: string, tier: TierId, level: number, tipoEfeito: TipoEfeito) {
-    const { data: ability } = await supabase
-      .from('abilities')
-      .insert({ name, description: desc, type: tier, tipo_efeito: tipoEfeito })
-      .select('id')
-      .single()
-    if (!ability) return
-    await supabase.from('character_abilities').insert({ character_id: character!.id, ability_id: ability.id, level })
-    loadCharacter()
+  async function addAbility(value: AbilityInput) {
+    await saveAbility('character', character!.id, value)
+    await loadCharacter()
   }
 
   async function spendEnergy(cost: number) {
@@ -537,11 +533,12 @@ export default function MinhaFicha() {
                 canEdit={canEdit}
                 canAct={canAct}
                 onRemove={() => removeAbility(a.ability_id)}
+                onChanged={loadCharacter}
                 onSpendEnergy={spendEnergy}
                 onApplyHeal={(amount) => applyHeal(amount, hpMax)}
               />
             ))}
-            {canEdit && <AddAbilityCard onAdd={addAbility} />}
+            {canEdit && <AbilityBuilder onAdd={addAbility} />}
             {!canEdit && abilities.length === 0 && (
               <p className="font-body text-sm text-neutral-600">Nenhuma habilidade registrada ainda.</p>
             )}
@@ -753,6 +750,7 @@ function AbilityCard({
   canEdit,
   canAct,
   onRemove,
+  onChanged,
   onSpendEnergy,
   onApplyHeal,
 }: {
@@ -762,6 +760,7 @@ function AbilityCard({
   canEdit: boolean
   canAct: boolean
   onRemove: () => void
+  onChanged: () => void
   onSpendEnergy: (cost: number) => void
   onApplyHeal: (amount: number) => void
 }) {
@@ -771,14 +770,16 @@ function AbilityCard({
   const tierId = row.abilities.type as AbilityTier
   const cost = energyCost(tierId, epMax)
   const insufficientEnergy = character.ep_current < cost
+  // Fora do combate só há rolagem simples de dano/cura. Barreira, buffs e debuffs existem apenas no combate.
+  const usableOutsideCombat = isAbilityReady(row.abilities) && abilityEffects(row.abilities).length === 1 && ['dano', 'cura'].includes(abilityEffects(row.abilities)[0].kind)
 
   const [pontoVital, setPontoVital] = useState(false)
   const [result, setResult] = useState<DamageResult | null>(null)
   const [applied, setApplied] = useState(false)
 
   function use() {
-    if (insufficientEnergy) return
-    const statusKey = EFEITO_STATUS_ESCALADOR[tipoEfeito]
+    if (insufficientEnergy || !usableOutsideCombat) return
+    const statusKey = abilityScaler(row.abilities)
     const r = calculateDamage({
       tier: tierId,
       nivelHabilidade: row.level,
@@ -804,11 +805,13 @@ function AbilityCard({
       </div>
       <div className="mt-1.5 flex flex-wrap gap-1.5">
         <CategoryTag id={tier.id} label={tier.label} color={tier.color} />
-        <CategoryTag id={efeitoMeta.id} label={efeitoMeta.label} color={efeitoMeta.color} />
+        <CategoryTag id={efeitoMeta.id} label={row.abilities.definition ? EFFECTS[row.abilities.definition.effects[0]?.kind] ?? 'Rascunho' : efeitoMeta.label} color={efeitoMeta.color} />
       </div>
+      <p className="mt-2 text-sm text-neutral-300">{abilitySummary(row.abilities)}</p>
+      <AbilityCombatStatus abilityId={row.ability_id} ability={row.abilities} canEdit={canEdit} onChanged={onChanged} />
       <p className="mt-2 font-body text-sm text-neutral-500 leading-relaxed">{row.abilities.description}</p>
 
-      {canAct && (
+      {canAct && usableOutsideCombat && (
         <div className="mt-3 border-t border-neutral-800 pt-3">
           <label className="flex items-center gap-1.5 font-body text-[11px] text-neutral-500">
             <input type="checkbox" checked={pontoVital} onChange={(e) => setPontoVital(e.target.checked)} />
@@ -941,75 +944,6 @@ function HeaderCard({
         </div>
       </GlowCard>
     </Reveal>
-  )
-}
-
-function AddAbilityCard({
-  onAdd,
-}: {
-  onAdd: (name: string, desc: string, tier: TierId, level: number, tipoEfeito: TipoEfeito) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [desc, setDesc] = useState('')
-  const [tier, setTier] = useState<TierId>('comum')
-  const [tipoEfeito, setTipoEfeito] = useState<TipoEfeito>('dano')
-  const [level, setLevel] = useState(1)
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="flex min-h-[120px] flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-neutral-800 font-body text-sm text-neutral-500 transition-colors duration-300 hover:border-neutral-600 hover:text-white"
-      >
-        <Plus size={16} strokeWidth={2} />
-        Adicionar habilidade
-      </button>
-    )
-  }
-
-  function submit() {
-    if (!name.trim()) return
-    onAdd(name.trim(), desc.trim(), tier, level, tipoEfeito)
-    setName('')
-    setDesc('')
-    setTier('comum')
-    setTipoEfeito('dano')
-    setLevel(1)
-    setOpen(false)
-  }
-
-  return (
-    <GlowCard contentClassName="p-5">
-      <div className="flex flex-col gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome da habilidade" className={inputClass} />
-        <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Descrição" rows={2} className={inputClass} />
-        <div className="flex gap-2">
-          <select value={tier} onChange={(e) => setTier(e.target.value as TierId)} className={inputClass}>
-            {ABILITY_TIERS.map((t) => (
-              <option key={t.id} value={t.id}>{t.label}</option>
-            ))}
-          </select>
-          <select value={tipoEfeito} onChange={(e) => setTipoEfeito(e.target.value as TipoEfeito)} className={inputClass}>
-            {TIPO_EFEITO_META.map((e) => (
-              <option key={e.id} value={e.id}>{e.label}</option>
-            ))}
-          </select>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={level}
-            onChange={(e) => setLevel(Number(e.target.value))}
-            className={`${inputClass} w-20`}
-          />
-        </div>
-        <div className="flex gap-2">
-          <button onClick={submit} className="flex-1 rounded bg-white py-1.5 font-body text-xs font-semibold text-neutral-950">Salvar</button>
-          <button onClick={() => setOpen(false)} className="rounded border border-neutral-700 px-2.5 py-1.5 font-body text-xs text-neutral-400">Cancelar</button>
-        </div>
-      </div>
-    </GlowCard>
   )
 }
 

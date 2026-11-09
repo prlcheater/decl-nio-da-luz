@@ -1,3 +1,4 @@
+import { abilityEffects, abilitySummary, abilityTargeting, isAbilityReady, ATTRIBUTES, type AbilityDefinition, type Attribute } from '@/lib/abilityDefinition'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Play, Square, Swords, UserRound, X } from 'lucide-react'
@@ -10,12 +11,9 @@ import TextType from '@/components/TextType'
 import CountUp from '@/components/CountUp'
 import {
   DIFFICULTIES,
-  EFEITO_STATUS_ESCALADOR,
   ENEMY_TIER_CONFIG,
-  calculateDamage,
   calculateEpMax,
   calculateHpMax,
-  calculateMitigation,
   damageSeverity,
   energyCost,
   isAbilityAvailable,
@@ -55,7 +53,47 @@ type BattleRow = {
   status: 'setup' | 'active' | 'ended'
   round_number: number
   current_turn_index: number
+  execution_test?: boolean
 }
+
+type EffectRow = {
+  id: string
+  target_participant_id: string
+  kind: 'buff' | 'debuff' | 'barreira'
+  attribute: Attribute | ''
+  amount: number
+  remaining_turns: number | null
+}
+
+type ActionEffect = {
+  kind: 'dano' | 'cura' | 'escudo' | 'buff' | 'debuff'
+  target: string
+  target_name: string
+  raw?: number
+  mitigation?: number
+  absorbed?: number
+  hp_loss?: number
+  healed?: number
+  barrier?: number
+  attribute?: Attribute
+  amount?: number
+  duration?: number
+  hp_max?: number
+}
+
+type ActionResult = {
+  action_id: string
+  actor: string
+  actor_name: string
+  ability_name: string
+  cost: number
+  critico: boolean
+  ponto_vital: boolean
+  execution: { roll: number; intellect: number; total: number; dc: number; success: boolean } | null
+  effects: ActionEffect[]
+}
+
+type ActionRow = { id: string; kind: 'ability' | 'turn'; round_number: number; created_at: string; result: ActionResult & { ended?: string; expired?: { kind: string; attribute: string }[] } }
 
 type ParticipantRow = {
   id: string
@@ -106,7 +144,7 @@ type EnemyInstanceData = {
 type AbilityRow = {
   ability_id: string
   level: number
-  abilities: { name: string; description: string | null; type: AbilityTier; tipo_efeito: TipoEfeito }
+  abilities: { name: string; description: string | null; type: AbilityTier; tipo_efeito: TipoEfeito; definition?: AbilityDefinition | null; combat_enabled?: boolean | null }
 }
 
 type CooldownRow = { ability_id: string; last_used_round: number }
@@ -130,7 +168,6 @@ type DamageToast = {
   targetLabel: string
   targetParticipantId: string
   abilityName: string
-  tipoEfeito: TipoEfeito
   amount: number
   severity: DamageSeverity
   color: string
@@ -153,8 +190,51 @@ type CombatToast = DamageToast | RollToast
 // chaves) — sem isso, o literal de RollToast/DamageToast perde a checagem de campo.
 type DistributiveOmit<T, K extends keyof never> = T extends unknown ? Omit<T, K> : never
 
+// Explica o cálculo devolvido pelo servidor: bruto → mitigação → barreira → PV.
+function describeEffect(e: ActionEffect): string {
+  switch (e.kind) {
+    case 'dano':
+      return `${e.target_name}: ${e.raw} bruto − ${e.mitigation} mitigação${e.absorbed ? ` − ${e.absorbed} barreira` : ''} = ${e.hp_loss} de PV perdido`
+    case 'cura':
+      return `${e.target_name}: +${e.healed} PV${e.raw !== e.healed ? ` (rolou ${e.raw}, limitado ao máximo)` : ''}`
+    case 'escudo':
+      return `${e.target_name}: barreira ${e.barrier}${e.raw !== e.barrier ? ` (rolou ${e.raw}; ficou a maior)` : ''}`
+    case 'buff':
+    case 'debuff':
+      return `${e.target_name}: ${e.kind === 'buff' ? '+' : '−'}${e.amount} ${e.attribute ? ATTRIBUTES[e.attribute] : ''} por ${e.duration} turno(s)`
+  }
+}
+
+function describeAction(r: ActionResult): string {
+  const head = `${r.ability_name} (${r.actor_name}, ${r.cost} PE)`
+  if (r.execution && !r.execution.success) {
+    return `${head}: falhou no teste de execução — ${r.execution.roll} + ${r.execution.intellect} Intelecto = ${r.execution.total} < ${r.execution.dc}. Nenhum efeito aplicado.`
+  }
+  const exec = r.execution ? ` Execução ${r.execution.total} ≥ ${r.execution.dc}.` : ''
+  const flags = [r.critico && 'Crítico!', r.ponto_vital && 'Ponto vital'].filter(Boolean).join(' · ')
+  return `${head}${flags ? ' — ' + flags : ''}.${exec} ${r.effects.map(describeEffect).join(' · ')}`
+}
+
+function toastFromAction(r: ActionResult): DistributiveOmit<CombatToast, 'id'> {
+  if (r.execution && !r.execution.success) {
+    return { kind: 'roll', actorLabel: r.actor_name, traitLabel: `Execução falhou · ${r.ability_name}`, total: r.execution.total, critico: false, falhaCritica: true }
+  }
+  const main = r.effects[0]
+  const base = { kind: 'damage' as const, actorLabel: r.actor_name, targetLabel: main?.target_name ?? '', targetParticipantId: main?.target ?? '', abilityName: r.ability_name, critico: r.critico }
+  if (!main) return { ...base, amount: 0, severity: 'branco', color: '#f5f5f5' }
+  if (main.kind === 'dano') {
+    const sev = damageSeverity({ amount: main.hp_loss ?? 0, hpMax: main.hp_max ?? 0 })
+    return { ...base, amount: main.hp_loss ?? 0, severity: sev.tier, color: sev.color }
+  }
+  const color = main.kind === 'cura' ? '#22c55e' : main.kind === 'escudo' ? '#60a5fa' : main.kind === 'buff' ? '#a78bfa' : '#f97316'
+  const amount = main.kind === 'cura' ? main.healed ?? 0 : main.kind === 'escudo' ? main.barrier ?? 0 : main.amount ?? 0
+  return { ...base, amount, severity: 'branco', color }
+}
+
+// Mesma ordem do servidor (combat_current_participant): iniciativa desc, nome por código e id.
+const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 function sortParticipants(rows: ParticipantRow[]): ParticipantRow[] {
-  return [...rows].sort((a, b) => b.initiative_total - a.initiative_total || a.name.localeCompare(b.name, 'pt-BR') || a.id.localeCompare(b.id))
+  return [...rows].sort((a, b) => b.initiative_total - a.initiative_total || cmp(a.name, b.name) || cmp(a.id, b.id))
 }
 
 function hashUnit(seed: string, salt: number): number {
@@ -243,7 +323,32 @@ const SIDE_GLOW: Record<'aliado' | 'inimigo', string> = {
   inimigo: '0 0 10px 2px rgba(220,38,38,0.6), 0 0 20px 8px rgba(220,38,38,0.3)',
 }
 
-function InitiativeSidebar({ sorted, currentIndex, targets }: { sorted: ParticipantRow[]; currentIndex: number; targets: Target[] }) {
+// Atributo efetivo = base + buffs − debuffs (mínimo 0). Base nunca é sobrescrita. Espelha combat_effective_attr.
+function effectiveTraits(base: Traits, participantId: string | undefined, effects: EffectRow[]): Traits {
+  const out = { ...base }
+  for (const e of effects) {
+    if (e.target_participant_id !== participantId || !e.attribute) continue
+    out[e.attribute] = Math.max(0, out[e.attribute] + (e.kind === 'buff' ? e.amount : -e.amount))
+  }
+  return out
+}
+
+function EffectChips({ list }: { list: EffectRow[] }) {
+  if (!list.length) return null
+  return (
+    <ul className="mt-1 flex flex-wrap gap-1" aria-label="Estados ativos">
+      {list.map((e) => (
+        <li key={e.id} className={'rounded border px-1.5 py-0.5 text-[11px] ' + (e.kind === 'barreira' ? 'border-sky-400/60 text-sky-200' : e.kind === 'buff' ? 'border-violet-400/60 text-violet-200' : 'border-orange-400/60 text-orange-200')}>
+          {e.kind === 'barreira'
+            ? `◆ Barreira ${e.amount}`
+            : `${e.kind === 'buff' ? '▲' : '▼'} ${e.attribute ? ATTRIBUTES[e.attribute] : ''} ${e.kind === 'buff' ? '+' : '−'}${e.amount} · ${e.remaining_turns}t`}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function InitiativeSidebar({ sorted, currentIndex, targets, effects }: { sorted: ParticipantRow[]; currentIndex: number; targets: Target[]; effects: EffectRow[] }) {
   return (
     <section aria-label="Ordem de iniciativa" className="relative z-10 my-5">
       <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-300">Ordem de iniciativa</h2>
@@ -260,6 +365,7 @@ function InitiativeSidebar({ sorted, currentIndex, targets }: { sorted: Particip
                 <p className="text-sm text-neutral-100">{p.name}</p>
                 <p className="text-xs text-neutral-300">{current ? "Turno atual · " : ""}{p.side === "aliado" ? "Aliado" : "Inimigo"}</p>
                 {target && <p className="text-xs tabular-nums text-neutral-300">PV {target.hpCurrent} / {target.hpMax}</p>}
+                <EffectChips list={effects.filter((e) => e.target_participant_id === p.id)} />
               </div>
             </li>
           )
@@ -459,6 +565,9 @@ function AbilityUseRow({
   epMax,
   cooldownRow,
   currentRound,
+  allies,
+  actorId,
+  busy,
   onUse,
 }: {
   ability: AbilityRow
@@ -466,15 +575,21 @@ function AbilityUseRow({
   epMax: number
   cooldownRow: CooldownRow | null
   currentRound: number
-  onUse: (pontoVital: boolean) => void
+  allies: Target[]
+  actorId: string
+  busy: boolean
+  onUse: (pontoVital: boolean, allyId: string | null) => void
 }) {
   const tier = ability.abilities.type
   const cost = energyCost(tier, epMax)
   const available = isAbilityAvailable({ tier, lastUsedRound: cooldownRow?.last_used_round ?? null, currentRound })
   const remaining = roundsUntilAvailable({ tier, lastUsedRound: cooldownRow?.last_used_round ?? null, currentRound })
   const [pontoVital, setPontoVital] = useState(false)
+  const [allyId, setAllyId] = useState(actorId)
+  const { allySupport } = abilityTargeting(ability.abilities)
+  const hasDamage = abilityEffects(ability.abilities).some((e) => e.kind === 'dano')
 
-  const disabled = !available || epCurrent < cost
+  const disabled = busy || !available || epCurrent < cost
 
   return (
     <div className="rounded border border-neutral-800 p-4">
@@ -482,17 +597,29 @@ function AbilityUseRow({
         <p className="font-body text-base text-neutral-100">{ability.abilities.name}</p>
         <Badge label={TIER_META[tier].label} color={TIER_META[tier].color} />
       </div>
+      <p className="mt-1.5 text-sm text-neutral-400">{abilitySummary(ability.abilities)}</p>
       {!available && <p className="mt-1.5 font-body text-sm text-red-400">Em recarga — faltam {remaining} rodada(s).</p>}
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-1.5 font-body text-sm text-neutral-500">
-          <input type="checkbox" checked={pontoVital} onChange={(e) => setPontoVital(e.target.checked)} /> Ponto vital
+      {available && epCurrent < cost && <p className="mt-1.5 font-body text-sm text-red-400">Energia insuficiente — faltam {cost - epCurrent} PE.</p>}
+      {allySupport && (
+        <label className="mt-3 block text-sm text-neutral-300">
+          Efeitos de apoio em
+          <select value={allyId} onChange={(e) => setAllyId(e.target.value)} className={inputClass + ' mt-1'}>
+            {allies.map((t) => <option key={t.participantId} value={t.participantId}>{t.participantId === actorId ? t.label + ' (você)' : t.label}</option>)}
+          </select>
         </label>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        {hasDamage && (
+          <label className="flex items-center gap-1.5 font-body text-sm text-neutral-500">
+            <input type="checkbox" checked={pontoVital} onChange={(e) => setPontoVital(e.target.checked)} /> Ponto vital
+          </label>
+        )}
         <button
-          onClick={() => onUse(pontoVital)}
+          onClick={() => onUse(hasDamage && pontoVital, allySupport ? allyId : null)}
           disabled={disabled}
           className="rounded bg-white px-4 py-2 font-body text-sm font-semibold text-neutral-950 disabled:opacity-40"
         >
-          Usar ({cost} PE)
+          {busy ? 'Resolvendo…' : `Usar (${cost} PE)`}
         </button>
       </div>
     </div>
@@ -538,6 +665,9 @@ function AbilityPopup({
   cooldowns,
   currentRound,
   mySide,
+  allies,
+  actorId,
+  busy,
   onUse,
   onClose,
 }: {
@@ -548,10 +678,15 @@ function AbilityPopup({
   cooldowns: CooldownRow[]
   currentRound: number
   mySide: 'aliado' | 'inimigo'
-  onUse: (ability: AbilityRow, pontoVital: boolean) => void
+  allies: Target[]
+  actorId: string
+  busy: boolean
+  onUse: (ability: AbilityRow, pontoVital: boolean, allyId: string | null) => void
   onClose: () => void
 }) {
-  const usable = abilities.filter((a) => (a.abilities.tipo_efeito === 'dano' ? target.side !== mySide : target.side === mySide))
+  // Sem fogo amigo: habilidade com efeito hostil mira adversário; de apoio, aliado. O servidor revalida.
+  const usable = abilities.filter((a) => isAbilityReady(a.abilities) && (abilityTargeting(a.abilities).hostile ? target.side !== mySide : target.side === mySide))
+  const drafts = abilities.length - abilities.filter((a) => isAbilityReady(a.abilities)).length
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={onClose}>
@@ -574,14 +709,18 @@ function AbilityPopup({
                 epMax={epMax}
                 cooldownRow={cooldowns.find((c) => c.ability_id === a.ability_id) ?? null}
                 currentRound={currentRound}
-                onUse={(pontoVital) => {
-                  onUse(a, pontoVital)
+                allies={allies}
+                actorId={actorId}
+                busy={busy}
+                onUse={(pontoVital, allyId) => {
+                  onUse(a, pontoVital, allyId)
                   onClose()
                 }}
               />
             ))}
           </div>
         )}
+        {drafts > 0 && <p className="mt-4 text-xs text-neutral-500">{drafts} habilidade(s) em rascunho não aparecem aqui.</p>}
       </div>
     </div>
   )
@@ -596,6 +735,8 @@ function ActionMenu({
   currentRound,
   targets,
   mySide,
+  actorId,
+  busy,
   onUseAbility,
   onRoll,
 }: {
@@ -607,7 +748,9 @@ function ActionMenu({
   currentRound: number
   targets: Target[]
   mySide: 'aliado' | 'inimigo'
-  onUseAbility: (ability: AbilityRow, targetId: string, pontoVital: boolean) => void
+  actorId: string
+  busy: boolean
+  onUseAbility: (ability: AbilityRow, targetId: string, pontoVital: boolean, allyId: string | null) => void
   onRoll: (traitLabel: string, result: TestResult) => void
 }) {
   const [step, setStep] = useState<ActionMenuStep>('menu')
@@ -636,7 +779,10 @@ function ActionMenu({
             cooldowns={cooldowns}
             currentRound={currentRound}
             mySide={mySide}
-            onUse={(ability, pontoVital) => onUseAbility(ability, popupTarget.participantId, pontoVital)}
+            allies={targets.filter((t) => t.side === mySide)}
+            actorId={actorId}
+            busy={busy}
+            onUse={(ability, pontoVital, allyId) => onUseAbility(ability, popupTarget.participantId, pontoVital, allyId)}
             onClose={() => setPopupTarget(null)}
           />
         )}
@@ -667,7 +813,17 @@ export default function Combate() {
   const [setupError, setSetupError] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<string | null>(null)
   const [toasts, setToasts] = useState<CombatToast[]>([])
+  const [effects, setEffects] = useState<EffectRow[]>([])
+  const [actions, setActions] = useState<ActionRow[]>([])
+  const [acting, setActing] = useState(false)
+  const actingRef = useRef(false)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+
+  function pushToast(payload: DistributiveOmit<CombatToast, 'id'>) {
+    const toast = { ...payload, id: `${Date.now()}-${Math.random()}` } as CombatToast
+    setToasts((prev) => [...prev, toast])
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== toast.id)), 5500)
+  }
 
   function broadcastToast(payload: DistributiveOmit<CombatToast, 'id'>) {
     channelRef.current?.send({ type: 'broadcast', event: 'combat-toast', payload })
@@ -690,8 +846,17 @@ export default function Combate() {
       setActorAbilities([])
       setActorEnemyAbilities([])
       setActorCooldowns([])
+      setEffects([])
+      setActions([])
       return
     }
+
+    const [{ data: effectRows }, { data: actionRows }] = await Promise.all([
+      supabase.from('battle_effects').select('id, target_participant_id, kind, attribute, amount, remaining_turns').eq('battle_session_id', battleRow.id),
+      supabase.from('battle_actions').select('id, kind, round_number, created_at, result').eq('battle_session_id', battleRow.id).order('created_at', { ascending: false }).limit(12),
+    ])
+    setEffects((effectRows as EffectRow[]) ?? [])
+    setActions((actionRows as ActionRow[]) ?? [])
 
     const { data: participantRows } = await supabase
       .from('battle_participants')
@@ -738,7 +903,7 @@ export default function Combate() {
       const [{ data: abilityRows }, { data: cooldownRows }] = await Promise.all([
         supabase
           .from('character_abilities')
-          .select('ability_id, level, abilities(name, description, type, tipo_efeito)')
+          .select('ability_id, level, abilities(name, description, type, tipo_efeito, definition, combat_enabled)')
           .eq('character_id', current.character_id),
         supabase.from('battle_ability_cooldowns').select('ability_id, last_used_round').eq('participant_id', current.id),
       ])
@@ -749,7 +914,7 @@ export default function Combate() {
       const [{ data: abilityRows }, { data: cooldownRows }] = await Promise.all([
         supabase
           .from('enemy_abilities')
-          .select('ability_id, level, abilities(name, description, type, tipo_efeito)')
+          .select('ability_id, level, abilities(name, description, type, tipo_efeito, definition, combat_enabled)')
           .eq('enemy_id', instMap[current.enemy_instance_id].enemy_id),
         supabase.from('battle_ability_cooldowns').select('ability_id, last_used_round').eq('participant_id', current.id),
       ])
@@ -773,10 +938,15 @@ export default function Combate() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'characters' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'enemy_instances' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_ability_cooldowns' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_effects' }, () => load())
+      // Números flutuantes só depois da confirmação do servidor (linha gravada no log).
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'battle_actions' }, ({ new: row }) => {
+        const action = row as ActionRow
+        if (action.kind === 'ability') pushToast(toastFromAction(action.result))
+        load()
+      })
       .on('broadcast', { event: 'combat-toast' }, ({ payload }) => {
-        const toast = { ...(payload as DistributiveOmit<CombatToast, 'id'>), id: `${Date.now()}-${Math.random()}` } as CombatToast
-        setToasts((prev) => [...prev, toast])
-        setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== toast.id)), 5500)
+        pushToast(payload as DistributiveOmit<CombatToast, 'id'>)
       })
       .subscribe()
     channelRef.current = channel
@@ -841,14 +1011,24 @@ export default function Combate() {
       setStarting(false)
     }
   }
+  // Servidor passa o turno e expira efeitos. O índice esperado impede passar dois turnos com dois cliques.
   async function nextTurn() {
-    if (!battle || participants.length === 0) return
-    const nextIndex = (battle.current_turn_index + 1) % participants.length
-    const wrapped = nextIndex === 0
-    await supabase
-      .from('battle_sessions')
-      .update({ current_turn_index: nextIndex, round_number: wrapped ? battle.round_number + 1 : battle.round_number })
-      .eq('id', battle.id)
+    if (!battle || participants.length === 0 || actingRef.current) return
+    actingRef.current = true
+    setActing(true)
+    const { error } = await supabase.rpc('combat_next_turn', { p_battle_id: battle.id, p_expected_index: battle.current_turn_index })
+    if (error) setLastResult('Não foi possível passar o turno: ' + error.message)
+    else setLastResult(null)
+    actingRef.current = false
+    setActing(false)
+    load()
+  }
+
+  async function toggleExecutionTest() {
+    if (!battle || !isMestre) return
+    const { error } = await supabase.from('battle_sessions').update({ execution_test: !battle.execution_test }).eq('id', battle.id)
+    if (error) setLastResult('Não foi possível alterar o teste de execução: ' + error.message)
+    load()
   }
 
   async function endBattle() {
@@ -957,145 +1137,40 @@ export default function Combate() {
     })
   }
 
-  // Passa pelo banco porque o jogador não tem permissão de gravar o PV de outros
-  // participantes direto. Se falhar, a ação para antes de gastar energia ou recarga.
-  async function applyHpChange(target: Target, delta: number): Promise<boolean> {
-    const { error } = await supabase.rpc('combat_apply_hp', {
-      p_actor_participant_id: currentParticipant!.id,
-      p_target_participant_id: target.participantId,
-      p_delta: delta,
-      p_hp_max: target.hpMax,
-    })
-    if (error) setLastResult(`Não foi possível aplicar o efeito em ${target.label}.`)
-    return !error
-  }
+  const actorBase: Traits = actingCharacter ?? actingEnemyInstance?.enemies ?? { attack: 0, resistance: 0, agility: 0, intellect: 0, charisma: 0 }
+  const actorEffectiveTraits = effectiveTraits(
+    { attack: actorBase.attack, resistance: actorBase.resistance, agility: actorBase.agility, intellect: actorBase.intellect, charisma: actorBase.charisma },
+    currentParticipant?.id,
+    effects,
+  )
 
-  async function useAbility(ability: AbilityRow, targetParticipantId: string, pontoVital: boolean) {
-    if (!actingCharacter || !currentParticipant || !battle) return
-    const tier = ability.abilities.type
-    const tipoEfeito = ability.abilities.tipo_efeito
-    const cost = energyCost(tier, characterEpMax)
-    if (actingCharacter.ep_current < cost) return
-
-    const statusKey = EFEITO_STATUS_ESCALADOR[tipoEfeito]
-    const result = calculateDamage({
-      tier,
-      nivelHabilidade: ability.level,
-      statusEscalador: actingCharacter[statusKey],
-      pontoVital,
-    })
-
-    const target = targets.find((t) => t.participantId === targetParticipantId)
-    if (!target) return
-
-    let resumo = ''
-    if (tipoEfeito === 'dano') {
-      const mitigation = calculateMitigation({ resistance: target.resistance, danoBruto: result.danoFinal })
-      if (!(await applyHpChange(target, -mitigation.danoFinal))) return
-      resumo = `${ability.abilities.name} em ${target.label}: ${result.danoFinal} bruto → mitigação ${mitigation.mitigacao} → ${mitigation.danoFinal} de dano final${result.critico ? ' (Crítico!)' : ''}.`
-      const sev = damageSeverity({ amount: mitigation.danoFinal, hpMax: target.hpMax })
-      broadcastToast({
-        kind: 'damage',
-        actorLabel: currentParticipant.name,
-        targetLabel: target.label,
-        targetParticipantId: target.participantId,
-        abilityName: ability.abilities.name,
-        tipoEfeito,
-        amount: mitigation.danoFinal,
-        severity: sev.tier,
-        color: sev.color,
-        critico: result.critico,
-      })
-    } else {
-      if (!(await applyHpChange(target, result.danoFinal))) return
-      resumo = `${ability.abilities.name} em ${target.label}: +${result.danoFinal} de ${tipoEfeito === 'cura' ? 'cura' : 'escudo'}${result.critico ? ' (Crítico!)' : ''}.`
-      broadcastToast({
-        kind: 'damage',
-        actorLabel: currentParticipant.name,
-        targetLabel: target.label,
-        targetParticipantId: target.participantId,
-        abilityName: ability.abilities.name,
-        tipoEfeito,
-        amount: result.danoFinal,
-        severity: 'branco',
-        color: tipoEfeito === 'cura' ? '#22c55e' : '#5227FF',
-        critico: result.critico,
-      })
+  // A ação inteira é resolvida no servidor (combat_use_ability): turno, autoria, alvo, custo,
+  // recarga, rolagens, efeitos e log numa transação. O identificador torna a repetição inofensiva.
+  async function useAbility(ability: AbilityRow, targetParticipantId: string, pontoVital: boolean, allyTargetId: string | null) {
+    if (!isAbilityReady(ability.abilities) || !currentParticipant || actingRef.current) return
+    actingRef.current = true
+    setActing(true)
+    setLastResult(null)
+    const actionId = crypto.randomUUID()
+    const args = {
+      p_action_id: actionId,
+      p_actor_participant_id: currentParticipant.id,
+      p_ability_id: ability.ability_id,
+      p_target_participant_id: targetParticipantId,
+      p_ally_target_participant_id: allyTargetId,
+      p_ponto_vital: pontoVital,
     }
-
-    await supabase.from('characters').update({ ep_current: actingCharacter.ep_current - cost }).eq('id', actingCharacter.id)
-    await supabase.from('battle_ability_cooldowns').upsert(
-      { battle_session_id: battle.id, participant_id: currentParticipant.id, ability_id: ability.ability_id, last_used_round: battle.round_number },
-      { onConflict: 'participant_id,ability_id' }
-    )
-
-    setLastResult(resumo)
-    load()
-  }
-
-  async function useEnemyAbility(ability: AbilityRow, targetParticipantId: string, pontoVital: boolean) {
-    if (!actingEnemyInstance || !currentParticipant || !battle) return
-    const enemyDef = actingEnemyInstance.enemies
-    const tier = ability.abilities.type
-    const tipoEfeito = ability.abilities.tipo_efeito
-    const cost = energyCost(tier, enemyEpMax)
-    if (actingEnemyInstance.ep_current < cost) return
-
-    const statusKey = EFEITO_STATUS_ESCALADOR[tipoEfeito]
-    const result = calculateDamage({
-      tier,
-      nivelHabilidade: ability.level,
-      statusEscalador: enemyDef[statusKey],
-      pontoVital,
-    })
-
-    const target = targets.find((t) => t.participantId === targetParticipantId)
-    if (!target) return
-
-    let resumo = ''
-    if (tipoEfeito === 'dano') {
-      const danoAjustado = Math.round(result.danoFinal * ENEMY_TIER_CONFIG[enemyDef.tier].danoMult)
-      const mitigation = calculateMitigation({ resistance: target.resistance, danoBruto: danoAjustado })
-      if (!(await applyHpChange(target, -mitigation.danoFinal))) return
-      resumo = `${ability.abilities.name} (${currentParticipant.name}) em ${target.label}: ${danoAjustado} bruto → mitigação ${mitigation.mitigacao} → ${mitigation.danoFinal} de dano final${result.critico ? ' (Crítico!)' : ''}.`
-      const sev = damageSeverity({ amount: mitigation.danoFinal, hpMax: target.hpMax })
-      broadcastToast({
-        kind: 'damage',
-        actorLabel: currentParticipant.name,
-        targetLabel: target.label,
-        targetParticipantId: target.participantId,
-        abilityName: ability.abilities.name,
-        tipoEfeito,
-        amount: mitigation.danoFinal,
-        severity: sev.tier,
-        color: sev.color,
-        critico: result.critico,
-      })
-    } else {
-      if (!(await applyHpChange(target, result.danoFinal))) return
-      resumo = `${ability.abilities.name} (${currentParticipant.name}) em ${target.label}: +${result.danoFinal} de ${tipoEfeito === 'cura' ? 'cura' : 'escudo'}${result.critico ? ' (Crítico!)' : ''}.`
-      broadcastToast({
-        kind: 'damage',
-        actorLabel: currentParticipant.name,
-        targetLabel: target.label,
-        targetParticipantId: target.participantId,
-        abilityName: ability.abilities.name,
-        tipoEfeito,
-        amount: result.danoFinal,
-        severity: 'branco',
-        color: tipoEfeito === 'cura' ? '#22c55e' : '#5227FF',
-        critico: result.critico,
-      })
+    try {
+      let response = await supabase.rpc('combat_use_ability', args)
+      // Falha de rede: reenvia com o MESMO id; o servidor não aplica duas vezes.
+      if (response.error && !response.error.code) response = await supabase.rpc('combat_use_ability', args)
+      if (response.error) setLastResult('Ação não realizada: ' + response.error.message)
+      else setLastResult(describeAction(response.data as ActionResult))
+    } finally {
+      actingRef.current = false
+      setActing(false)
+      load()
     }
-
-    await supabase.from('enemy_instances').update({ ep_current: actingEnemyInstance.ep_current - cost }).eq('id', actingEnemyInstance.id)
-    await supabase.from('battle_ability_cooldowns').upsert(
-      { battle_session_id: battle.id, participant_id: currentParticipant.id, ability_id: ability.ability_id, last_used_round: battle.round_number },
-      { onConflict: 'participant_id,ability_id' }
-    )
-
-    setLastResult(resumo)
-    load()
   }
 
   return (
@@ -1109,14 +1184,20 @@ export default function Combate() {
           <p className="mt-1 font-body text-sm text-neutral-500">Rodada {battle.round_number}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {(isMestre || canAct) && (
+            <button
+              onClick={nextTurn}
+              disabled={acting}
+              className="flex min-h-11 items-center gap-1.5 rounded bg-white px-3 py-1.5 font-body text-xs font-semibold text-neutral-950 disabled:opacity-50"
+            >
+              <Play size={16} strokeWidth={2} /> {isMestre ? 'Próximo turno' : 'Encerrar meu turno'}
+            </button>
+          )}
           {isMestre && (
             <>
-              <button
-                onClick={nextTurn}
-                className="flex items-center gap-1.5 rounded bg-white px-3 py-1.5 font-body text-xs font-semibold text-neutral-950"
-              >
-                <Play size={16} strokeWidth={2} /> Próximo turno
-              </button>
+              <label className="flex min-h-11 items-center gap-1.5 text-xs text-neutral-300" title="Teste de execução por Intelecto (regra provisória)">
+                <input type="checkbox" checked={!!battle.execution_test} onChange={toggleExecutionTest} /> Teste de Intelecto
+              </label>
               <button
                 onClick={endBattle}
                 className="flex items-center gap-1.5 rounded border border-neutral-700 px-3 py-1.5 font-body text-xs text-neutral-400 transition-colors duration-300 hover:text-white"
@@ -1131,7 +1212,7 @@ export default function Combate() {
         </div>
       </Reveal>
 
-      <InitiativeSidebar sorted={sorted} currentIndex={battle.current_turn_index} targets={targets} />
+      <InitiativeSidebar sorted={sorted} currentIndex={battle.current_turn_index} targets={targets} effects={effects} />
 
       {canAct && (actingCharacter || actingEnemyInstance) && currentParticipant && (
         <>
@@ -1166,7 +1247,7 @@ export default function Combate() {
               <div className="mt-6">
                 <ActionMenu
                   key={currentParticipant.id}
-                  actorTraits={actingCharacter ?? actingEnemyInstance?.enemies ?? { attack: 0, resistance: 0, agility: 0, intellect: 0, charisma: 0 }}
+                  actorTraits={actorEffectiveTraits}
                   abilities={actingCharacter ? actorAbilities : actorEnemyAbilities}
                   epCurrent={actingCharacter?.ep_current ?? actingEnemyInstance?.ep_current ?? 0}
                   epMax={actingCharacter ? characterEpMax : enemyEpMax}
@@ -1174,27 +1255,38 @@ export default function Combate() {
                   currentRound={battle.round_number}
                   targets={targets}
                   mySide={currentParticipant.side}
-                  onUseAbility={(ability, targetId, pontoVital) =>
-                    actingCharacter ? useAbility(ability, targetId, pontoVital) : useEnemyAbility(ability, targetId, pontoVital)
-                  }
+                  actorId={currentParticipant.id}
+                  busy={acting}
+                  onUseAbility={useAbility}
                   onRoll={broadcastRoll}
                 />
               </div>
 
-              {lastResult && (
-                <TextType
-                  key={lastResult}
-                  text={[lastResult]}
-                  typingSpeed={20}
-                  showCursor={false}
-                  loop={false}
-                  className="mt-5 block font-body text-sm text-neutral-400"
-                />
-              )}
+              {lastResult && <p role="status" className="mt-5 break-words font-body text-sm text-neutral-300">{lastResult}</p>}
             </GlowCard>
           </Reveal>
         </>
       )}
+
+      {!canAct && lastResult && <p role="status" className="relative z-10 mt-4 text-sm text-red-300">{lastResult}</p>}
+
+      <section aria-label="Registro do combate" className="relative z-10 mt-8">
+        <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-300">Registro</h2>
+        {actions.length === 0 ? (
+          <p className="text-sm text-neutral-500">Nenhuma ação registrada neste combate.</p>
+        ) : (
+          <ol className="flex flex-col gap-2">
+            {actions.map((a) => (
+              <li key={a.id} className="break-words rounded-lg border border-neutral-800 bg-neutral-950/90 p-3 text-sm text-neutral-300">
+                <span className="mr-2 text-xs tabular-nums text-neutral-500">R{a.round_number}</span>
+                {a.kind === 'ability'
+                  ? describeAction(a.result)
+                  : `Fim do turno de ${participants.find((p) => p.id === a.result.ended)?.name ?? '—'}${a.result.expired?.length ? ` · expirou: ${a.result.expired.map((x) => (x.attribute ? ATTRIBUTES[x.attribute as Attribute] : x.kind)).join(', ')}` : ''}`}
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
     </div>
   )
 }
