@@ -11,7 +11,7 @@ Atualizado em 08/11/2026. Este checklist é o acompanhamento operacional do [pla
 - [x] **Fase 3 — Execução confiável (implementação local, 09/11).** Turno, autoria, alvo, efeito, gasto, recarga e log no servidor; teste de execução por Intelecto opcional por combate.
 - [x] **Fase 4 — Estados elementais (implementação local, 10/11).** Marca aplicada, origem, duração e ícones no combate.
 - [x] **Fase 5 — Primeiras reações (implementação local, 10/11).** Vaporização, Derretimento, Congelamento, Condução, Alastramento e Germinação.
-- [ ] **Fase 6 — Ensaio de combate.** Habilidades reais da party, ajustes matemáticos e encontro completo.
+- [~] **Fase 6 — Ensaio de combate (simulação e roteiro prontos; sessão pendente).** Habilidades reais da party, ajustes matemáticos e encontro completo.
 
 Esse faseamento substitui a ordem operacional A–F do plano inicial; o conteúdo e os requisitos do plano detalhado continuam como referência.
 
@@ -155,6 +155,46 @@ Disparam quando um efeito **com aplicação elemental** atinge um alvo que já t
 - `tests/beta-1.0-smoke.cjs` (navegador): chip da marca, “Reação prevista: Vaporização” e reação no registro. Os outros dois testes de navegador e o build também passam.
 - Não testado: RLS e Realtime no Supabase real.
 
-## Próxima etapa — Fase 6
+## Fase 6 — Ensaio de combate (preparado em 10/11; sessão pendente)
 
-Ensaio de combate com as habilidades reais da party. Depende de Paulo: aplicar os patches de 09 e 10/11, cadastrar ou revisar os poderes reais, confirmar as regras provisórias das fases 2 a 5 e conduzir um encontro de teste com a mesa (mestre, jogadores, NPC e inimigos repetidos, no celular). Depois disso, ajustar os números com base no registro do combate.
+Publicado: patches de 09 e 10/11 aplicados no Supabase (conferido pela API) e frontend das fases 1–5 na `main` (`56303b0`).
+
+### Simulação da matemática atual
+
+`node scripts/simular-combate.mjs` usa as fórmulas reais do motor e a ordem do servidor. Resultado (personagem nível 10, habilidade nível 1, alvo com Resistência igual ao atributo):
+
+| Atributo | Comum: golpes p/ derrubar inimigo comum / elite / boss | Especial | Suprema |
+|---|---|---|---|
+| 3 | 25 / 38 / 75 | 12 / 18 / 37 | 5 / 7 / 15 |
+| 6 | 19 / 28 / 56 | 10 / 14 / 29 | 4 / 7 / 13 |
+| 9 | 16 / 25 / 49 | 9 / 13 / 26 | 4 / 6 / 12 |
+
+- Inimigo comum causa ~3% do PV de um personagem por golpe Comum; boss ~5,5%.
+- Vaporização/Derretimento: +56% de dano final (a mitigação é fixa, então +50% no bruto rende mais). Condução quase dobra a ação (157 → ~299 com 2 alvos extras); Alastramento soma ~35%.
+
+**Leitura para Paulo decidir antes da sessão** (nada foi alterado):
+1. **Combates longos:** com habilidades Comuns, um inimigo comum leva ~16–25 golpes; um boss, 50–75. O PV (500 + Resistência × 150 + nível × 10, × até 3 no boss) cresce muito mais rápido que o dano dos dados. Opções: reduzir o PV dos inimigos, aumentar o incremento por nível das habilidades ou aceitar encontros longos com ênfase em Especiais/Supremas.
+2. **Pouca ameaça aos jogadores:** 3–5% do PV por golpe inimigo. Inimigos com multiplicador de dano < 1 (comum 0,7) agravam isso.
+3. **Condução é a reação mais forte** com 3+ inimigos marcados; vale manter limite de 2 saltos ou reduzir para 40%.
+4. Nível da habilidade pesa pouco na Comum (+3 por nível) e muito na Suprema (+75 por nível).
+
+### Roteiro do ensaio
+
+Preparação (mestre):
+- [ ] Cadastrar/revisar 2–3 habilidades reais por personagem da party, incluindo ao menos: um dano com elemento, uma cura ou barreira, um buff/debuff. Habilitar rascunhos antigos que fizerem sentido.
+- [ ] Montar um encontro: party + 1 NPC aliado + 3 cópias de um inimigo comum + 1 elite.
+- [ ] Combinar no grupo uma sequência de reação (ex.: Marine de um jogador, Ignis de outro).
+
+Durante (anotar no próprio registro do combate):
+- [ ] Cada jogador age no próprio celular e encerra o próprio turno.
+- [ ] Dano + debuff, barreira absorvendo, buff próprio durando o turno seguinte, cura em aliado escolhido.
+- [ ] Marca aparece no alvo, prévia de reação aparece antes de usar, reação confirmada no registro.
+- [ ] F5 no meio de um turno e troca de dispositivo: estados, marcas e registro continuam.
+- [ ] Ligar o teste de Intelecto por uma rodada.
+- [ ] Medir tempo médio de turno e quantas rodadas o encontro levou.
+
+Depois:
+- [ ] Comparar o registro com a simulação; decidir PV/dano, percentuais das reações e regras provisórias 1–6 das fases 2/3.
+- [ ] Atualizar manual/Codex com a versão aprovada.
+
+Aceite da Beta 1.1: encontro completo com dano, cura, barreira, buff, debuff e reação, sem edição manual para corrigir falhas do sistema.
