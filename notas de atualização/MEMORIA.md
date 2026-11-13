@@ -264,3 +264,7 @@ Restaurado o lint com config flat (`eslint.config.js`): `typescript-eslint` + `e
 ### 13/11/2026 — Beta 1.2, rodada 5: versão do app e box "Beta"
 
 O `package.json` voltou a versionar de verdade (`1.2.0`) e o Vite injeta esse valor como `__APP_VERSION__` (`define` em `vite.config.ts`), mantendo o número numa fonte só. Novo `src/lib/appVersion.ts` expõe `APP_VERSION`, `APP_CHANNEL` (`'beta'`) e `APP_LABEL` (`"BETA 1.2.0"`). Criado o componente `VersionBadge`: box azul com gradiente animado do azul profundo ao azul claro (reutilizando `BorderGlow` + `GradientText`), exibido em destaque no hero da Home e em versão compacta fixa no canto inferior esquerdo das telas internas. Subir a versão do app passa a ser só editar `package.json`.
+
+### 13/11/2026 — Beta 1.2, rodada 6: tipos de combate em módulo próprio
+
+Os tipos de linha de tabela e de resultado das RPCs de combate saíram de `Combate.tsx` para `src/lib/combatTypes.ts` (`BattleRow`, `EffectRow`, `ParticipantRow`, `CharacterData`, `EnemyInstanceData`, `AbilityRow`, `Target`, toasts, `DistributiveOmit`, etc.). Movimentação sem mudança de comportamento: reduz a duplicação e prepara o reúso no VTT (Beta 1.4). Verificação: lint, testes e build em verde.

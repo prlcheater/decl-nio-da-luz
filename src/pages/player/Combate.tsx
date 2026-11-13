@@ -1,5 +1,5 @@
 import { ACTIVE_REACTIONS, predictReaction, type ReactionId } from '@/lib/reactions'
-import { abilityEffects, abilitySummary, abilityTargeting, isAbilityReady, ATTRIBUTES, type AbilityDefinition, type Attribute } from '@/lib/abilityDefinition'
+import { abilityEffects, abilitySummary, abilityTargeting, isAbilityReady, ATTRIBUTES, type Attribute } from '@/lib/abilityDefinition'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Play, Square, Swords, UserRound, X } from 'lucide-react'
@@ -22,12 +22,26 @@ import {
   resolveTest,
   rollInitiative,
   type AbilityTier,
-  type DamageSeverity,
   type DifficultyId,
   type EnemyTier,
   type TestResult,
-  type TipoEfeito,
 } from '@/lib/diceEngine'
+import {
+  type AbilityRow,
+  type ActionEffect,
+  type ActionResult,
+  type ActionRow,
+  type BattleRow,
+  type CharacterData,
+  type CombatToast,
+  type CooldownRow,
+  type DamageToast,
+  type DistributiveOmit,
+  type EffectRow,
+  type EnemyInstanceData,
+  type ParticipantRow,
+  type Target,
+} from '@/lib/combatTypes'
 
 const inputClass =
   'w-full rounded border border-neutral-700 bg-neutral-900 px-3 py-2 font-body text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none'
@@ -47,160 +61,6 @@ const TIER_META: Record<AbilityTier, { label: string; color: string }> = {
 }
 
 const FLOAT_KEYFRAMES = ['combat-float-a', 'combat-float-b', 'combat-float-c']
-
-type BattleRow = {
-  id: string
-  name: string | null
-  status: 'setup' | 'active' | 'ended'
-  round_number: number
-  current_turn_index: number
-  execution_test?: boolean
-}
-
-type EffectRow = {
-  id: string
-  target_participant_id: string
-  kind: 'buff' | 'debuff' | 'barreira' | 'marca'
-  attribute: Attribute | ''
-  amount: number
-  remaining_turns: number | null
-  element: string | null
-  label: string | null
-  source_participant_id: string | null
-  updated_at: string
-}
-
-type ReactionInfo = { name: ReactionId; consumed: string; element: string; secondary: ActionEffect[] }
-
-type ActionEffect = {
-  kind: 'dano' | 'cura' | 'escudo' | 'buff' | 'debuff'
-  target: string
-  target_name: string
-  raw?: number
-  mitigation?: number
-  absorbed?: number
-  hp_loss?: number
-  healed?: number
-  barrier?: number
-  attribute?: Attribute
-  amount?: number
-  duration?: number
-  hp_max?: number
-  mark?: string
-  mark_turns?: number
-  reaction?: ReactionInfo
-}
-
-type ActionResult = {
-  action_id: string
-  actor: string
-  actor_name: string
-  ability_name: string
-  cost: number
-  critico: boolean
-  ponto_vital: boolean
-  execution: { roll: number; intellect: number; total: number; dc: number; success: boolean } | null
-  effects: ActionEffect[]
-}
-
-type ActionRow = { id: string; kind: 'ability' | 'turn'; round_number: number; created_at: string; result: ActionResult & { ended?: string; expired?: { kind: string; attribute: string; element?: string | null; label?: string | null }[] } }
-
-type ParticipantRow = {
-  id: string
-  battle_session_id: string
-  character_id: string | null
-  enemy_instance_id: string | null
-  name: string
-  side: 'aliado' | 'inimigo'
-  initiative_total: number
-}
-
-type CharacterData = {
-  id: string
-  user_id: string | null
-  name: string
-  portrait_url: string | null
-  level: number
-  hp_current: number
-  ep_current: number
-  attack: number
-  resistance: number
-  agility: number
-  intellect: number
-  charisma: number
-}
-
-type EnemyDef = {
-  name: string
-  portrait_url: string | null
-  tier: EnemyTier
-  level: number
-  attack: number
-  resistance: number
-  agility: number
-  intellect: number
-  charisma: number
-}
-
-type EnemyInstanceData = {
-  id: string
-  enemy_id: string
-  status: 'active' | 'defeated'
-  hp_current: number
-  ep_current: number
-  enemies: EnemyDef
-}
-
-type AbilityRow = {
-  ability_id: string
-  level: number
-  abilities: { name: string; description: string | null; type: AbilityTier; tipo_efeito: TipoEfeito; definition?: AbilityDefinition | null; combat_enabled?: boolean | null }
-}
-
-type CooldownRow = { ability_id: string; last_used_round: number }
-
-type Target = {
-  participantId: string
-  label: string
-  side: 'aliado' | 'inimigo'
-  kind: 'character' | 'enemy'
-  refId: string
-  portraitUrl: string | null
-  hpCurrent: number
-  hpMax: number
-  resistance: number
-  marks: { element: string; sourceSide: 'aliado' | 'inimigo' | null }[]
-}
-
-type DamageToast = {
-  id: string
-  kind: 'damage'
-  actorLabel: string
-  targetLabel: string
-  targetParticipantId: string
-  abilityName: string
-  amount: number
-  severity: DamageSeverity
-  color: string
-  critico: boolean
-  reaction?: string
-}
-
-type RollToast = {
-  id: string
-  kind: 'roll'
-  actorLabel: string
-  traitLabel: string
-  total: number
-  critico: boolean
-  falhaCritica: boolean
-}
-
-type CombatToast = DamageToast | RollToast
-
-// Omit não distribui sobre union por padrão (keyof de um union vira interseção das
-// chaves) — sem isso, o literal de RollToast/DamageToast perde a checagem de campo.
-type DistributiveOmit<T, K extends keyof never> = T extends unknown ? Omit<T, K> : never
 
 // Explica o cálculo devolvido pelo servidor: bruto → mitigação → barreira → PV.
 function describeEffect(e: ActionEffect): string {
