@@ -19,12 +19,12 @@ await db.exec(`
   create function auth.role() returns text language sql stable as $$ select 'authenticated' $$;
   create publication supabase_realtime;
 `)
-for (const f of ['schema.sql', 'patch-2026-11-04-seguranca-e-combate.sql', 'patch-2026-11-07-fichas-mestre-npcs.sql', 'patch-2026-11-08-habilidades-fase-1.sql', 'patch-2026-11-09-combate-fases-2-3.sql']) {
+for (const f of ['01_schema.sql', '02_seguranca-e-combate.sql', '03_fichas-mestre-npcs.sql', '04_habilidades-estruturadas.sql', '05_combate-servidor.sql']) {
   try { await db.exec(sql(f)) } catch (e) { console.error('FALHOU em', f, e.message); process.exit(1) }
 }
 // Idempotência do patch novo.
-await db.exec(sql('patch-2026-11-09-combate-fases-2-3.sql'))
-console.log('OK: schema + 4 patches aplicados; patch 09 roda duas vezes')
+await db.exec(sql('05_combate-servidor.sql'))
+console.log('OK: schema + 4 patches aplicados; 05_combate-servidor roda duas vezes')
 
 const M = '00000000-0000-4000-8000-000000000001', P1 = '00000000-0000-4000-8000-000000000002', P2 = '00000000-0000-4000-8000-000000000003'
 const as = async (uid) => db.exec(`set test.uid = '${uid}'`)
@@ -212,11 +212,11 @@ console.log('OK: combat_apply_hp revogado; só as RPCs públicas ficam expostas'
 console.log('PASS: fases 2 e 3 no Postgres local')
 
 // ======================= Fases 4 e 5 =======================
-// Aplica o patch 10 sobre o banco já com efeitos e log (caminho real de atualização) e reaplica.
+// Aplica 06 sobre o banco já com efeitos e log (caminho real de atualização) e reaplica.
 await db.exec('reset test.uid')
-await db.exec(sql('patch-2026-11-10-elementos-reacoes-fases-4-5.sql'))
-await db.exec(sql('patch-2026-11-10-elementos-reacoes-fases-4-5.sql'))
-console.log('OK: patch 10 aplicado sobre dados existentes e reaplicado')
+await db.exec(sql('06_elementos-e-reacoes.sql'))
+await db.exec(sql('06_elementos-e-reacoes.sql'))
+console.log('OK: 06_elementos-e-reacoes aplicado sobre dados existentes e reaplicado')
 assert.equal(await val(`select combat_enabled from abilities where id=$1`, [elemental]), false, 'rascunho elemental antigo segue exigindo revisão')
 await as(M)
 await db.query(`update abilities set combat_enabled = true where id=$1`, [elemental])

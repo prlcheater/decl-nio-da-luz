@@ -1,7 +1,7 @@
 -- ============================================================
 -- PATCH 2026-11-04 — segurança das contas e combate para jogadores
 -- ============================================================
--- Rodar DEPOIS de schema.sql. Pode ser executado mais de uma vez sem efeito
+-- Rodar DEPOIS de 01_schema.sql. Pode ser executado mais de uma vez sem efeito
 -- colateral. Vale tanto para projeto novo quanto para banco já em uso.
 --
 -- O que muda:

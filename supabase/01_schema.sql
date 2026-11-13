@@ -1,9 +1,9 @@
 -- ============================================================
 -- DECLÍNIO DA LUZ — SCHEMA SUPABASE
 -- ============================================================
--- Só roda em banco vazio. Depois dele, execute
--- patch-2026-11-04-seguranca-e-combate.sql e seed.sql. As policies abaixo não
--- são as finais: o patch substitui parte delas. Passo a passo no README.md.
+-- Só roda em banco vazio. Depois dele, execute os scripts 02 a 07 na ordem
+-- (ver 00_LEIA-ME.md). As policies abaixo não são as finais: o patch 02
+-- substitui parte delas. Passo a passo no README.md.
 
 -- ---------- PERFIS ----------
 create table profiles (

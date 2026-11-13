@@ -36,7 +36,7 @@ Estética: **RPG futurista**, escuro, luminoso e animado (componentes React Bits
 | `src/lib/gameData.ts` | Elementos, classes e roadmap do Expresso Astral (conteúdo fixo) |
 | `src/pages/player/Combate.tsx` | Combate (~1.200 linhas) |
 | `src/pages/player/MinhaFicha.tsx` | Ficha (~1.300 linhas) |
-| `supabase/schema.sql`, `patch-2026-11-04-*.sql`, `seed.sql` | Banco, RLS, funções e dados fixos |
+| `supabase/01_schema.sql` … `07_seed.sql` (índice em `00_LEIA-ME.md`) | Banco, RLS, funções e dados fixos |
 | `docs/MANUAL DECLÍNIO.docx` | Manual de regras e lore escrito por Paulo |
 
 ---
@@ -104,7 +104,7 @@ Partículas Three.js no fundo, scroll suave (desligado com "reduzir movimento"),
 
 - Uma ficha ativa por jogador (garantido pelo banco); ficha antiga é arquivada, não apagada.
 - Nível máximo **125**. Máximo de **10** pontos base por traço.
-- Elementos e classes são listas fixas (`seed.sql`).
+- Elementos e classes são listas fixas (`07_seed.sql`).
 - PV/PE atuais: jogador e mestre editam. Máximos saem de fórmula; só o mestre altera nível e traços.
 - **Sistema Cardinal** (Cifras evoluem habilidades): só o campo existe; regras a definir.
 - **Direção de Paulo (04/11/2026):** as diferenças entre código e manual **não significam que o código está errado** — Paulo adaptou a matemática de propósito. Alinhar significa avaliar as adaptações e atualizar a referência oficial, não restaurar o DOCX automaticamente.
@@ -154,7 +154,7 @@ Observação: muitos dados somados ficam estáveis. 100d2+3 tem média 153 e des
 
 **Fichas e contas**
 - Criação em etapas (login, perfil, ficha) pode deixar cadastro incompleto.
-- Sem `seed.sql`, ficha é salva sem classe/elemento e sem aviso.
+- Sem `07_seed.sql`, ficha é salva sem classe/elemento e sem aviso.
 - PV/PE atuais não acompanham novo máximo ao mudar traços.
 - Não existe NPC aliado (toda ficha aliada exige login).
 - Jogador sem ficha cai numa tela sem orientação.
@@ -210,11 +210,11 @@ Tudo acima é **hipótese de protótipo**; nenhum número vira regra sem Paulo e
 - Depois do login, mestre vai ao painel e jogador à ficha (substitui a decisão de 16/08).
 
 ### 04/11/2026 — Segurança, combate e telas
-Requer `supabase/patch-2026-11-04-seguranca-e-combate.sql`.
+Requer `supabase/02_seguranca-e-combate.sql`.
 - Segurança: conta não se promove mais a mestre; jogador só altera PV/PE atuais pela API; excluir ficha de mestre não apaga o login.
 - Combate: jogador enxerga os participantes; PV ajustado no banco (golpes simultâneos não se sobrescrevem); falha no efeito aborta antes de gastar PE/recarga; tabelas no Realtime.
 - Telas: fim das telas em branco (sem perfil, banco fora, ficha de inimigo); login distingue PIN errado de servidor fora; aviso de alteração não salva; PV/PE por teclado salvos; nível limitado a 125; confirmação ao excluir inimigo.
-- Projeto: `README.md`, `seed.sql` e `vercel.json`.
+- Projeto: `README.md`, `07_seed.sql` e `vercel.json`.
 
 ### 16/08/2026
 - Login e F5 levavam à Home (revertido em 04/11).
@@ -239,11 +239,16 @@ Criador compartilhado com escalador configurável, definição estruturada e ras
 
 ### 09/11/2026 — Beta 1.1, fases 2 e 3 implementadas localmente
 
-Buffs, debuffs e barreira (escudo deixou de curar) com atributos efetivos e expiração por turno do alvo. Ação de habilidade e passagem de turno resolvidas no servidor numa transação, com log persistido e idempotência. Rascunhos antigos exigem habilitação explícita do mestre. Patch `patch-2026-11-09-combate-fases-2-3.sql` testado em Postgres local, ainda não aplicado no Supabase. Regras provisórias e checklist de publicação da época ficaram arquivados no histórico do Git.
+Buffs, debuffs e barreira (escudo deixou de curar) com atributos efetivos e expiração por turno do alvo. Ação de habilidade e passagem de turno resolvidas no servidor numa transação, com log persistido e idempotência. Rascunhos antigos exigem habilitação explícita do mestre. Patch `05_combate-servidor.sql` testado em Postgres local, ainda não aplicado no Supabase. Regras provisórias e checklist de publicação da época ficaram arquivados no histórico do Git.
 
 ### 10/11/2026 — Beta 1.1, fases 4 e 5 implementadas localmente
 
-Marcas elementais com origem e duração, e o primeiro lote de reações: Vaporização, Derretimento, Congelamento, Condução, Alastramento e Germinação. Os valores são provisórios. Patch `patch-2026-11-10-elementos-reacoes-fases-4-5.sql` testado em Postgres local, ainda não aplicado no Supabase (ordem: 09 → 10 → frontend). Detalhes arquivados no histórico do Git.
+Marcas elementais com origem e duração, e o primeiro lote de reações: Vaporização, Derretimento, Congelamento, Condução, Alastramento e Germinação. Os valores são provisórios. Patch `06_elementos-e-reacoes.sql` testado em Postgres local, ainda não aplicado no Supabase (ordem: 05 → 06 → frontend). Detalhes arquivados no histórico do Git.
+
 ### 13/11/2026 — Beta 1.2, rodada 1: limpeza e consolidação
 
 Removidos artefatos que só serviam de orientação: notas de rodada Beta 1.0, fichas de mestre/NPCs, plano Beta 1.1 e checklist de fases, além do CSV original de reações e dos prints locais de `beta-check.local/`. O conteúdo relevante foi consolidado em `MEMORIA.md` e `ROADMAP.md`; o texto original continua acessível no histórico do Git. Roadmap reposicionado para o ciclo Beta 1.2 → 1.4, com o VTT como alvo da 1.4.
+
+### 13/11/2026 — Beta 1.2, rodada 2: scripts SQL numerados
+
+Os scripts do banco passaram a ter prefixo numérico, na ordem de execução: `01_schema.sql`, `02_seguranca-e-combate.sql`, `03_fichas-mestre-npcs.sql`, `04_habilidades-estruturadas.sql`, `05_combate-servidor.sql`, `06_elementos-e-reacoes.sql` e `07_seed.sql`. Criado o índice `supabase/00_LEIA-ME.md` (o que rodar em banco novo e em banco já em uso) e reservados `08_beta-1.3-estados.sql` e `09_beta-1.4-vtt.sql`. Referências atualizadas no `README.md`, no teste `tests/combat-sql.mjs` e nos cabeçalhos dos próprios SQL. Nenhuma mudança de conteúdo no banco: apenas renomeação (o histórico do Git preserva os nomes antigos).

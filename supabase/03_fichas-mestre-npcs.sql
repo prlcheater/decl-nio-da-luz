@@ -1,4 +1,4 @@
--- Aplicar após patch-2026-11-04-seguranca-e-combate.sql e antes de publicar o frontend.
+-- Aplicar após 02_seguranca-e-combate.sql e antes de publicar o frontend.
 -- NPC = ficha sem dono/login. As políticas existentes mantêm a escrita exclusiva do mestre.
 begin;
 
