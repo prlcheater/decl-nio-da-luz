@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { useLocation, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/lib/AuthContext'
 import Navbar from '@/components/Navbar'
+import VersionBadge from '@/components/VersionBadge'
 import SiteBackground from '@/components/SiteBackground'
 import SmoothScroll from '@/components/SmoothScroll'
 import ProtectedRoute from '@/components/ProtectedRoute'
@@ -21,11 +22,17 @@ const FichaInimigo = lazy(() => import('@/pages/player/FichaInimigo'))
 const Combate = lazy(() => import('@/pages/player/Combate'))
 
 export default function App() {
+  const { pathname } = useLocation()
   return (
     <AuthProvider>
       <SmoothScroll />
       <SiteBackground />
       <Navbar />
+      {pathname !== '/' && (
+        <div className="fixed bottom-4 left-4 z-40">
+          <VersionBadge compact />
+        </div>
+      )}
       <Suspense fallback={<div className="mx-auto max-w-4xl px-6 py-24 text-center font-body text-sm text-neutral-500">Carregando…</div>}>
       <Routes>
          <Route path="/player/minha-ficha/criar" element={<ProtectedRoute><CriarFicha key="self" mode="self" /></ProtectedRoute>} />
