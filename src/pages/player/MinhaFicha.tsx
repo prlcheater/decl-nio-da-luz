@@ -34,6 +34,7 @@ import ImageCropModal from '@/components/ImageCropModal'
 import { ELEMENTS, CLASSES, GRADIENT_COLORS } from '@/lib/gameData'
 import {
   DIFFICULTIES,
+  FREE_ROLL_MAX_DICE,
   MAX_LEVEL,
   calculateEpMax,
   calculateHpMax,
@@ -674,6 +675,7 @@ function RollResultRow({ label, result }: { label: string; result: TestResult | 
 function RollPanel({ character }: { character: CharacterRow }) {
   const [difficulty, setDifficulty] = useState<DifficultyId>('regular')
   const [freeText, setFreeText] = useState('')
+  const [freeError, setFreeError] = useState<string | null>(null)
   const [history, setHistory] = useState<{ label: string; result: TestResult | FreeRollResult }[]>([])
 
   function rollTrait(trait: (typeof TRAITS_META)[number]) {
@@ -683,7 +685,11 @@ function RollPanel({ character }: { character: CharacterRow }) {
 
   function rollFree() {
     const result = rollFreeText(freeText)
-    if (!result) return
+    if (!result) {
+      setFreeError(`Notação inválida ou acima do limite (até ${FREE_ROLL_MAX_DICE} dados).`)
+      return
+    }
+    setFreeError(null)
     setHistory((prev) => [{ label: freeText, result }, ...prev].slice(0, 3))
     setFreeText('')
   }
@@ -730,6 +736,10 @@ function RollPanel({ character }: { character: CharacterRow }) {
           Rolar
         </button>
       </div>
+
+      {freeError && (
+        <p role="alert" className="mt-2 font-body text-xs text-red-300">{freeError}</p>
+      )}
 
       {history.length > 0 && (
         <div className="mt-4 flex flex-col gap-2">

@@ -17,6 +17,14 @@ export default tseslint.config(
       parserOptions: { ecmaFeatures: { jsx: true } },
       globals: { ...globals.browser },
     },
+    plugins: {
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
   },
   {
     files: ['**/*.{ts,tsx}'],

@@ -990,7 +990,6 @@ export default function Combate() {
       supabase.removeChannel(channel)
       channelRef.current = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading])
 
   if (authLoading || battle === undefined) return null

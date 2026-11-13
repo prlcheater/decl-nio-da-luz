@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   ABILITY_TIER_CONFIG,
+  FREE_ROLL_MAX_DICE,
   MAX_LEVEL,
   calculateDamage,
   calculateEpMax,
@@ -15,6 +16,7 @@ import {
   resetRandomSource,
   resolveTest,
   rollDie,
+  rollFreeText,
   rollPool,
   roundsUntilAvailable,
   setRandomSource,
@@ -177,5 +179,26 @@ describe('severidade do dano flutuante', () => {
     expect(damageSeverity({ amount: 300, hpMax: 1000 }).tier).toBe('laranja')
     expect(damageSeverity({ amount: 150, hpMax: 1000 }).tier).toBe('amarelo')
     expect(damageSeverity({ amount: 50, hpMax: 1000 }).tier).toBe('branco')
+  })
+})
+
+describe('rolagem livre', () => {
+  afterEach(() => resetRandomSource())
+
+  it('limita a quantidade de dados para não travar a página', () => {
+    setRandomSource(alwaysMax)
+    expect(FREE_ROLL_MAX_DICE).toBe(200)
+    expect(rollFreeText('300d6')).toBeNull()
+    expect(rollFreeText('2d2000')).toBeNull()
+    expect(rollFreeText('0d6')).toBeNull()
+    expect(rollFreeText('abc')).toBeNull()
+  })
+
+  it('soma o keep-highest e o modificador', () => {
+    setRandomSource(alwaysMax)
+    const r = rollFreeText('3d6kh2+1')
+    expect(r?.kept).toEqual([6, 6])
+    expect(r?.sum).toBe(12)
+    expect(r?.total).toBe(13)
   })
 })

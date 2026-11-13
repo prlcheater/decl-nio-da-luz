@@ -9,4 +9,19 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    // Separa os fornecedores grandes do bundle principal. As rotas também são
+    // carregadas sob demanda (React.lazy em src/App.tsx).
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ['three', 'postprocessing'],
+          gsap: ['gsap', '@gsap/react'],
+          motion: ['motion'],
+          supabase: ['@supabase/supabase-js'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 800,
+  },
 })

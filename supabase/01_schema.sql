@@ -350,7 +350,7 @@ alter table characters add column xp_progress int not null default 0
   check (xp_progress >= 0 and xp_progress <= 100);
 
 -- ============================================================
--- PATCH — motor de rolagem e cálculo de dano (roadmap-sistema-rpg.md)
+-- PATCH — motor de rolagem e cálculo de dano (regras adaptadas por Paulo)
 -- ============================================================
 -- Tiers de habilidade renomeados pra bater com o sistema de dados por tier
 -- (comum=d2, especial=d4, suprema=d8). PV/PE base saem de uso (viram

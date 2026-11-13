@@ -91,9 +91,14 @@ export function parseDiceNotation(input: string): ParsedRoll | null {
 
 export type FreeRollResult = { rolls: number[]; kept: number[]; sum: number; modifier: number; total: number }
 
+// Limites da rolagem livre: evitam travar o navegador com pools absurdos.
+export const FREE_ROLL_MAX_DICE = 200
+export const FREE_ROLL_MAX_SIDES = 1000
+
 export function rollFreeText(input: string): FreeRollResult | null {
   const parsed = parseDiceNotation(input)
   if (!parsed) return null
+  if (parsed.count < 1 || parsed.count > FREE_ROLL_MAX_DICE || parsed.sides < 2 || parsed.sides > FREE_ROLL_MAX_SIDES) return null
   const rolls = rollPool(parsed.count, parsed.sides)
   const kept = parsed.keepHighest ? [...rolls].sort((a, b) => b - a).slice(0, parsed.keepHighest) : rolls
   const sum = kept.reduce((a, b) => a + b, 0)
