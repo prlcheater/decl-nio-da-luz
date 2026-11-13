@@ -268,3 +268,7 @@ O `package.json` voltou a versionar de verdade (`1.2.0`) e o Vite injeta esse va
 ### 13/11/2026 — Beta 1.2, rodada 6: tipos de combate em módulo próprio
 
 Os tipos de linha de tabela e de resultado das RPCs de combate saíram de `Combate.tsx` para `src/lib/combatTypes.ts` (`BattleRow`, `EffectRow`, `ParticipantRow`, `CharacterData`, `EnemyInstanceData`, `AbilityRow`, `Target`, toasts, `DistributiveOmit`, etc.). Movimentação sem mudança de comportamento: reduz a duplicação e prepara o reúso no VTT (Beta 1.4). Verificação: lint, testes e build em verde.
+
+### 13/11/2026 — Beta 1.2 publicada na main; início do alicerce da Beta 1.3
+
+A Beta 1.2 (limpeza de artefatos, scripts SQL numerados, lint/Vitest, RNG injetável, code splitting, versionamento com a box Beta azul e extração dos tipos de combate) foi integrada à `main` (merge `6885139`) e enviada ao GitHub — a Vercel publica a partir daí. **Sem alterações de banco.** Início da Beta 1.3: criado o catálogo de condições de combate em `src/lib/conditions.ts` (queimadura, veneno, corrosão, lentidão, foco, regeneração), com valores **provisórios** centralizados e testes em `src/lib/conditions.test.ts`. A ligação ao combate e o patch `08_beta-1.3-estados.sql` entram nas próximas rodadas.
