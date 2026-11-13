@@ -241,7 +241,6 @@ export default function PainelInimigos() {
     if (!isMestre) return
     load()
     supabase.from('elements').select('id, name').order('name').then(({ data }) => setElements(data ?? []))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMestre])
 
   if (authLoading) return null

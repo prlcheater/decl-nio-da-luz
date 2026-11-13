@@ -88,7 +88,7 @@ export const TRAITS: TraitEntry[] = [
   { name: 'Carisma', desc: 'Determina como NPCs e outras figuras do mundo interpretam e reagem ao personagem.' },
 ]
 
-// Fonte: docs/CONTEXTO-PROJETO.md — Roadmap do Expresso Astral (Temporada 1)
+// Fonte: manual do mestre — Roadmap do Expresso Astral (Temporada 1)
 export const ROADMAP: RoadmapStop[] = [
   {
     order: 1,

@@ -1,7 +1,7 @@
 -- ============================================================
 -- SEED — classes e elementos
 -- ============================================================
--- Rodar depois do schema e do patch. Pode ser executado mais de uma vez.
+-- Rodar depois dos scripts 01 a 06. Pode ser executado mais de uma vez.
 -- Sem estes dados, o formulário "Criar Ficha" não oferece classe nem elemento.
 -- Os nomes precisam ser iguais aos de src/lib/gameData.ts: é por eles que a ficha
 -- encontra o ícone e as cores de cada elemento e classe.

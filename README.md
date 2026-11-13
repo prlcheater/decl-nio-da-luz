@@ -21,24 +21,29 @@ O site abre em `http://localhost:5173`. Home, Codex e Livro funcionam mesmo sem 
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` | Checagem de tipos e build de produção em `dist/` |
+| `npm run lint` | ESLint (config flat em `eslint.config.js`) |
+| `npm test` | Testes do motor com Vitest (`npm run test:watch` em modo watch) |
 | `npm run preview` | Serve o build localmente |
-
-`npm run lint` não funciona no momento: falta o arquivo `eslint.config.js`.
 
 ## Configurar o Supabase
 
-O banco fica definido em `supabase/`:
+O banco fica definido em `supabase/`, em ordem numérica. O índice completo está em
+[`supabase/00_LEIA-ME.md`](supabase/00_LEIA-ME.md).
 
-| Arquivo | Conteúdo |
-|---|---|
-| `schema.sql` | Tabelas, RLS e funções. Só roda em banco vazio |
-| `patch-2026-11-04-seguranca-e-combate.sql` | Correções de segurança e de combate. Pode rodar mais de uma vez |
-| `seed.sql` | Classes e elementos. Pode rodar mais de uma vez |
+| Arquivo | Conteúdo | Quando rodar |
+|---|---|---|
+| `01_schema.sql` | Tabelas, RLS e funções | Só em banco vazio |
+| `02_seguranca-e-combate.sql` | Correções de segurança e de combate | Reaplicável |
+| `03_fichas-mestre-npcs.sql` | Ficha do mestre e NPCs sem login | Reaplicável |
+| `04_habilidades-estruturadas.sql` | Criador estruturado de habilidades | Reaplicável |
+| `05_combate-servidor.sql` | Buffs/debuffs/barreira e execução no servidor | Reaplicável |
+| `06_elementos-e-reacoes.sql` | Marcas elementais e primeiras reações | Reaplicável |
+| `07_seed.sql` | Classes e elementos | Reaplicável |
 
 ### Projeto novo
 
 1. Crie o projeto em [supabase.com](https://supabase.com) e copie a **Project URL** e a chave **anon** (*Project Settings > API*) para o `.env`.
-2. No **SQL Editor**, execute nesta ordem: `schema.sql`, o patch e `seed.sql`.
+2. No **SQL Editor**, execute os arquivos de `01` a `07`, na ordem numérica.
 3. Em *Authentication > Sign In / Providers > Email*:
    - desligue **Confirm email**, porque os e-mails do app são fictícios e nunca seriam confirmados;
    - mantenha **Allow new users to sign up** ligado, porque o formulário "Criar Ficha" depende dele.
@@ -46,7 +51,8 @@ O banco fica definido em `supabase/`:
 
 ### Banco que já está em uso
 
-Execute só o patch e o `seed.sql`. **Não** execute o `schema.sql` de novo.
+Já está aplicado até o `07`. **Não** execute o `01_schema.sql` de novo. Quando uma beta
+nova chegar (ex.: `08_beta-1.3-estados.sql`), rode **apenas o patch novo**.
 
 ### Criar o primeiro mestre
 

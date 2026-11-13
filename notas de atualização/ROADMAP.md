@@ -1,10 +1,16 @@
 # Roadmap — Declínio da Luz
 
-## Prioridade atual — Beta 1.1
+## Prioridade atual — Beta 1.2 → 1.4 (rumo ao VTT)
 
-**Acompanhamento:** [checklist das seis fases](BETA-1.1-FASES.md). Fase 1 implementada localmente; migração e publicação pendentes. Próxima: fase 2, buffs/debuffs e barreiras.
+Beta 1.1 está concluída em código: criador estruturado, buffs/debuffs/barreira, execução confiável no servidor, marcas elementais e as primeiras reações. O próximo ciclo é:
 
-O plano ativo é [Beta 1.1 — Reestruturação do combate e criação de habilidades](BETA-1.1-COMBATE.md), consolidado em 08/11/2026. Ele detalha o criador estruturado, alvos sem fogo amigo, atributos, teste de Intelecto, estados e os 36 pares do CSV. As etapas sobrepostas abaixo passam a ser orientadas por esse plano; itens fora do combate continuam preservados. O plano ainda não representa implementação.
+- **Beta 1.2 — Fundação e confiabilidade (sem regra nova):** limpeza de artefatos, scripts SQL numerados, lint + Vitest, RNG injetável, code splitting, versionamento visível ("Beta" azul) e extração de hooks/componentes do combate e da ficha. Sem SQL novo.
+- **Beta 1.3 — Regras legíveis e estados:** catálogo tipado central (tiers, custos e fórmulas numa fonte só), estados/condições com duração e expiração, e modo simples com "ver cálculo". SQL `08_beta-1.3-estados.sql`.
+- **Beta 1.4 — VTT leve e interativo:** mapa com grid, tokens arrastáveis e camada de desenho, sincronizados por Realtime, reaproveitando `battle_participants`, os RPCs de combate, `reactions.ts` e `diceEngine.ts`. SQL `09_beta-1.4-vtt.sql`.
+
+Publicação: cada beta entra por branch de teste, commitada por rodada; só depois vai à `main` (deploy automático na Vercel). Patches SQL novos são aplicados manualmente no Supabase, na numeração indicada em `supabase/00_LEIA-ME.md`.
+
+As notas de rodada antigas (Beta 1.0, Beta 1.1 e fichas de mestre) foram consolidadas aqui e no `MEMORIA.md`; o texto original permanece no histórico do Git.
 
 O que vamos fazer, em que ordem e com quais ferramentas. O que já existe e as regras valendo estão em [MEMORIA.md](MEMORIA.md).
 

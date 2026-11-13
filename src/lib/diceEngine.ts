@@ -1,4 +1,4 @@
-// Motor de dados/dano — implementa roadmap-sistema-rpg.md (Fases 1 e 2).
+// Motor de dados/dano do sistema Declínio da Luz (regras adaptadas por Paulo).
 // Módulo puro (sem React/Supabase) pra ficar fácil de testar isoladamente.
 
 export type DifficultyId = 'favoravel' | 'regular' | 'dificil' | 'severa'
@@ -10,8 +10,33 @@ export const DIFFICULTIES: { id: DifficultyId; label: string; poolDelta: number;
   { id: 'severa', label: 'Severa', poolDelta: -2, modifier: -8 },
 ]
 
+// Fonte de aleatoriedade trocável (RNG injetável). Por padrão usa Math.random;
+// testes e simulações podem semear para obter resultados reproduzíveis.
+export type RandomSource = () => number
+let randomSource: RandomSource = Math.random
+
+export function setRandomSource(source: RandomSource) {
+  randomSource = source
+}
+
+export function resetRandomSource() {
+  randomSource = Math.random
+}
+
+// Gerador determinístico (mulberry32): mesma semente ⇒ mesma sequência.
+export function createSeededRandom(seed: number): RandomSource {
+  let state = seed >>> 0
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0
+    let t = state
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
 export function rollDie(sides: number): number {
-  return Math.floor(Math.random() * sides) + 1
+  return Math.floor(randomSource() * sides) + 1
 }
 
 export function rollPool(count: number, sides: number): number[] {
@@ -66,9 +91,14 @@ export function parseDiceNotation(input: string): ParsedRoll | null {
 
 export type FreeRollResult = { rolls: number[]; kept: number[]; sum: number; modifier: number; total: number }
 
+// Limites da rolagem livre: evitam travar o navegador com pools absurdos.
+export const FREE_ROLL_MAX_DICE = 200
+export const FREE_ROLL_MAX_SIDES = 1000
+
 export function rollFreeText(input: string): FreeRollResult | null {
   const parsed = parseDiceNotation(input)
   if (!parsed) return null
+  if (parsed.count < 1 || parsed.count > FREE_ROLL_MAX_DICE || parsed.sides < 2 || parsed.sides > FREE_ROLL_MAX_SIDES) return null
   const rolls = rollPool(parsed.count, parsed.sides)
   const kept = parsed.keepHighest ? [...rolls].sort((a, b) => b - a).slice(0, parsed.keepHighest) : rolls
   const sum = kept.reduce((a, b) => a + b, 0)

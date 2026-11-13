@@ -5,6 +5,7 @@ import SplitText from '@/components/SplitText'
 import Reveal from '@/components/Reveal'
 import GlowCard from '@/components/GlowCard'
 import GradientText from '@/components/GradientText'
+import VersionBadge from '@/components/VersionBadge'
 import { ELEMENTS, CLASSES, ROADMAP } from '@/lib/gameData'
 
 const SEASONS = [
@@ -84,6 +85,17 @@ function Hero({ onContentUnlock }: { onContentUnlock: () => void }) {
         >
           Ler o Livro
         </Link>
+      </div>
+
+      <div
+        className="mt-8"
+        style={{
+          opacity: buttonsVisible ? 1 : 0,
+          transform: buttonsVisible ? 'translateY(0)' : 'translateY(18px)',
+          transition: `opacity ${BUTTONS_FADE_S}s cubic-bezier(0.16,1,0.3,1), transform ${BUTTONS_FADE_S}s cubic-bezier(0.16,1,0.3,1)`,
+        }}
+      >
+        <VersionBadge />
       </div>
     </section>
   )

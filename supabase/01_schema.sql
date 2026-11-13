@@ -1,9 +1,9 @@
 -- ============================================================
 -- DECLÍNIO DA LUZ — SCHEMA SUPABASE
 -- ============================================================
--- Só roda em banco vazio. Depois dele, execute
--- patch-2026-11-04-seguranca-e-combate.sql e seed.sql. As policies abaixo não
--- são as finais: o patch substitui parte delas. Passo a passo no README.md.
+-- Só roda em banco vazio. Depois dele, execute os scripts 02 a 07 na ordem
+-- (ver 00_LEIA-ME.md). As policies abaixo não são as finais: o patch 02
+-- substitui parte delas. Passo a passo no README.md.
 
 -- ---------- PERFIS ----------
 create table profiles (
@@ -350,7 +350,7 @@ alter table characters add column xp_progress int not null default 0
   check (xp_progress >= 0 and xp_progress <= 100);
 
 -- ============================================================
--- PATCH — motor de rolagem e cálculo de dano (roadmap-sistema-rpg.md)
+-- PATCH — motor de rolagem e cálculo de dano (regras adaptadas por Paulo)
 -- ============================================================
 -- Tiers de habilidade renomeados pra bater com o sistema de dados por tier
 -- (comum=d2, especial=d4, suprema=d8). PV/PE base saem de uso (viram
