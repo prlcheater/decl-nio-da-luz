@@ -228,19 +228,22 @@ Requer `supabase/patch-2026-11-04-seguranca-e-combate.sql`.
 
 ## Direção aprovada — Beta 1.1 (08/11/2026)
 
-Planejamento registrado em [BETA-1.1-COMBATE.md](BETA-1.1-COMBATE.md), sem alteração de código ou banco nesta rodada. Paulo aprovou criação por campos estruturados, habilidades compostas, atributo escalador separado do atributo modificado, ausência de fogo amigo e movimentação ativa somente própria. Intelecto deve participar da execução da maioria das habilidades energéticas; Carisma pode escalar habilidades e receber modificadores. Reações devem acrescentar benefícios à estratégia, sem cancelamentos.
+Planejamento registrado no documento Beta 1.1 (arquivado no histórico do Git), sem alteração de código ou banco nesta rodada. Paulo aprovou criação por campos estruturados, habilidades compostas, atributo escalador separado do atributo modificado, ausência de fogo amigo e movimentação ativa somente própria. Intelecto deve participar da execução da maioria das habilidades energéticas; Carisma pode escalar habilidades e receber modificadores. Reações devem acrescentar benefícios à estratégia, sem cancelamentos.
 
-O CSV foi preservado como referência; conflitos com a orientação verbal e adaptações estão explícitos no plano. Valores, dificuldades, durações e regras de resistência ainda exigem calibração. Estas diretrizes de evolução não substituem a descrição do motor atualmente implementado.
+O CSV original de reações foi substituído pelo catálogo em `src/lib/reactions.ts`; conflitos com a orientação verbal e adaptações estão explícitos no plano. Valores, dificuldades, durações e regras de resistência ainda exigem calibração. Estas diretrizes de evolução não substituem a descrição do motor atualmente implementado.
 
 
 ### 08/11/2026 — Beta 1.1, fase 1 implementada localmente
 
-Criador compartilhado com escalador configurável, definição estruturada e rascunhos bloqueados na UI. Habilidades antigas preservadas. Patch SQL preparado, ainda não aplicado nesta sessão. Banco real/publicação pendentes; conferir [checklist](BETA-1.1-FASES.md). Próxima etapa: buffs, debuffs e barreiras.
+Criador compartilhado com escalador configurável, definição estruturada e rascunhos bloqueados na UI. Habilidades antigas preservadas. Patch SQL preparado, ainda não aplicado nesta sessão. Banco real/publicação pendentes. Próxima etapa: buffs, debuffs e barreiras.
 
 ### 09/11/2026 — Beta 1.1, fases 2 e 3 implementadas localmente
 
-Buffs, debuffs e barreira (escudo deixou de curar) com atributos efetivos e expiração por turno do alvo. Ação de habilidade e passagem de turno resolvidas no servidor numa transação, com log persistido e idempotência. Rascunhos antigos exigem habilitação explícita do mestre. Patch `patch-2026-11-09-combate-fases-2-3.sql` testado em Postgres local, ainda não aplicado no Supabase. Regras provisórias e checklist de publicação em [BETA-1.1-FASES.md](BETA-1.1-FASES.md).
+Buffs, debuffs e barreira (escudo deixou de curar) com atributos efetivos e expiração por turno do alvo. Ação de habilidade e passagem de turno resolvidas no servidor numa transação, com log persistido e idempotência. Rascunhos antigos exigem habilitação explícita do mestre. Patch `patch-2026-11-09-combate-fases-2-3.sql` testado em Postgres local, ainda não aplicado no Supabase. Regras provisórias e checklist de publicação da época ficaram arquivados no histórico do Git.
 
 ### 10/11/2026 — Beta 1.1, fases 4 e 5 implementadas localmente
 
-Marcas elementais com origem e duração, e o primeiro lote de reações: Vaporização, Derretimento, Congelamento, Condução, Alastramento e Germinação. Os valores são provisórios. Patch `patch-2026-11-10-elementos-reacoes-fases-4-5.sql` testado em Postgres local, ainda não aplicado no Supabase (ordem: 09 → 10 → frontend). Detalhes em [BETA-1.1-FASES.md](BETA-1.1-FASES.md).
+Marcas elementais com origem e duração, e o primeiro lote de reações: Vaporização, Derretimento, Congelamento, Condução, Alastramento e Germinação. Os valores são provisórios. Patch `patch-2026-11-10-elementos-reacoes-fases-4-5.sql` testado em Postgres local, ainda não aplicado no Supabase (ordem: 09 → 10 → frontend). Detalhes arquivados no histórico do Git.
+### 13/11/2026 — Beta 1.2, rodada 1: limpeza e consolidação
+
+Removidos artefatos que só serviam de orientação: notas de rodada Beta 1.0, fichas de mestre/NPCs, plano Beta 1.1 e checklist de fases, além do CSV original de reações e dos prints locais de `beta-check.local/`. O conteúdo relevante foi consolidado em `MEMORIA.md` e `ROADMAP.md`; o texto original continua acessível no histórico do Git. Roadmap reposicionado para o ciclo Beta 1.2 → 1.4, com o VTT como alvo da 1.4.
