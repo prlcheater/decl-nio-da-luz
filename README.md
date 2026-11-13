@@ -21,9 +21,9 @@ O site abre em `http://localhost:5173`. Home, Codex e Livro funcionam mesmo sem 
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` | Checagem de tipos e build de produção em `dist/` |
+| `npm run lint` | ESLint (config flat em `eslint.config.js`) |
+| `npm test` | Testes do motor com Vitest (`npm run test:watch` em modo watch) |
 | `npm run preview` | Serve o build localmente |
-
-`npm run lint` não funciona no momento: falta o arquivo `eslint.config.js`.
 
 ## Configurar o Supabase
 

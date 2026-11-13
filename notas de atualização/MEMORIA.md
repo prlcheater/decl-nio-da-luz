@@ -79,7 +79,7 @@ Conteúdo narrativo completo vem do manual de Paulo. Novas ideias não estabelec
 | Combate | Iniciativa, turnos, alvos, energia, recarga, mitigação e números flutuantes em tempo real |
 | Upload de item | Não implementado (itens têm nome e raridade, sem imagem) |
 | Mapa de batalha | Não implementado |
-| Testes / lint | Nenhum teste; `npm run lint` quebrado (falta `eslint.config.js`) |
+| Testes / lint | `npm run lint` e `npm test` (Vitest) funcionam; cobertura inicial do motor `diceEngine` |
 
 ### Login e contas
 
@@ -252,3 +252,7 @@ Removidos artefatos que só serviam de orientação: notas de rodada Beta 1.0, f
 ### 13/11/2026 — Beta 1.2, rodada 2: scripts SQL numerados
 
 Os scripts do banco passaram a ter prefixo numérico, na ordem de execução: `01_schema.sql`, `02_seguranca-e-combate.sql`, `03_fichas-mestre-npcs.sql`, `04_habilidades-estruturadas.sql`, `05_combate-servidor.sql`, `06_elementos-e-reacoes.sql` e `07_seed.sql`. Criado o índice `supabase/00_LEIA-ME.md` (o que rodar em banco novo e em banco já em uso) e reservados `08_beta-1.3-estados.sql` e `09_beta-1.4-vtt.sql`. Referências atualizadas no `README.md`, no teste `tests/combat-sql.mjs` e nos cabeçalhos dos próprios SQL. Nenhuma mudança de conteúdo no banco: apenas renomeação (o histórico do Git preserva os nomes antigos).
+
+### 13/11/2026 — Beta 1.2, rodada 3: lint, Vitest e RNG injetável
+
+Restaurado o lint com config flat (`eslint.config.js`): `typescript-eslint` + `eslint-plugin-react-hooks` + `eslint-plugin-react-refresh`. `npm run lint` volta a funcionar (o wrapper `@typescript-eslint/no-unused-expressions` crasha com a versão de ESLint em uso e ficou desligado; o `tsc` cobre esse caso). Adicionado Vitest (`npm test` / `npm run test:watch`) com a primeira cobertura do motor `src/lib/diceEngine.test.ts` (17 testes: pool, teste de dificuldade, notação de dados, dano/crítico/ponto vital, mitigação, PV/PE, custo de energia, recarga e severidade). O motor ganhou RNG injetável (`setRandomSource`, `resetRandomSource`, `createSeededRandom` — mulberry32) para testes e simulações reproduzíveis, mantendo `Math.random` como padrão.
