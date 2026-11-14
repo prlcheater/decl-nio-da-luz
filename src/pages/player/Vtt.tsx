@@ -12,6 +12,12 @@ import type { AbilityRow, ActionResult, BattleRow, CharacterData, CooldownRow, E
 const SIDE_COLOR: Record<'aliado' | 'inimigo', string> = { aliado: '#38bdf8', inimigo: '#f87171' }
 const TRAIT_LABEL: Record<'attack' | 'resistance' | 'agility' | 'intellect' | 'charisma', string> = { attack: 'Ataque', resistance: 'Resistência', agility: 'Agilidade', intellect: 'Intelecto', charisma: 'Carisma' }
 
+// Multiplicador de vida por tier com fallback (tier inesperado não derruba a tela).
+function vidaMult(tier: string): number {
+  const cfg = (ENEMY_TIER_CONFIG as Record<string, { vidaMult: number }>)[tier]
+  return cfg ? cfg.vidaMult : 1
+}
+
 type DmgToast = { id: string; targetId: string; amount: number; color: string; label: string }
 
 function useLoadedImage(url: string | null) {
@@ -125,7 +131,7 @@ export default function Vtt() {
       } else if (p.enemy_instance_id) {
         const i = instancesById[p.enemy_instance_id]
         if (!i) continue
-        const mult = ENEMY_TIER_CONFIG[i.enemies.tier].vidaMult
+        const mult = vidaMult(i.enemies.tier)
         out.set(p.id, { participantId: p.id, label: p.name, side: p.side, kind: 'enemy', refId: i.id, portraitUrl: i.enemies.portrait_url, hpCurrent: i.hp_current, hpMax: Math.round(calculateHpMax({ resistance: i.enemies.resistance, level: i.enemies.level }) * mult), resistance: i.enemies.resistance, marks: [] })
       }
     }
@@ -154,7 +160,7 @@ export default function Vtt() {
   const actorEpMax = actorChar
     ? calculateEpMax({ intellect: actorChar.intellect, level: actorChar.level })
     : actorEnemy
-      ? Math.round(calculateEpMax({ intellect: actorEnemy.enemies.intellect, level: actorEnemy.enemies.level }) * ENEMY_TIER_CONFIG[actorEnemy.enemies.tier].vidaMult)
+      ? Math.round(calculateEpMax({ intellect: actorEnemy.enemies.intellect, level: actorEnemy.enemies.level }) * vidaMult(actorEnemy.enemies.tier))
       : 0
   const actorLabel = currentParticipant ? currentParticipant.name : ''
 
@@ -346,7 +352,8 @@ export default function Vtt() {
               const target = targets.get(t.participant_id) ?? null
               const cx = t.x * size.width
               const cy = t.y * size.height
-              const r = Math.max(14, size.width * t.size)
+              const w = Math.max(1, size.width)
+              const r = Math.max(14, w * (t.size || 0.06))
               const pct = target && target.hpMax > 0 ? Math.max(0, Math.min(1, target.hpCurrent / target.hpMax)) : 0
               const side = target?.side ?? 'inimigo'
               const isCurrent = !!currentParticipant && currentParticipant.id === t.participant_id
@@ -358,7 +365,7 @@ export default function Vtt() {
                   draggable={canMove(t.participant_id)}
                   onClick={() => onTokenClick(t.participant_id)}
                   onTap={() => onTokenClick(t.participant_id)}
-                  onDragEnd={(e) => moveToken(t, e.target.x() / size.width, e.target.y() / size.height)}
+                  onDragEnd={(e) => moveToken(t, e.target.x() / w, e.target.y() / Math.max(1, size.height))}
                 >
                   <Circle radius={r + 6} fill="#0a0a0a" opacity={0.5} />
                   <Circle radius={r} fill={t.color ?? SIDE_COLOR[side]} opacity={0.92} stroke="#0a0a0a" strokeWidth={2} />

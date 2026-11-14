@@ -6,6 +6,7 @@ import VersionBadge from '@/components/VersionBadge'
 import SiteBackground from '@/components/SiteBackground'
 import SmoothScroll from '@/components/SmoothScroll'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import ErrorBoundary from '@/components/ErrorBoundary'
 // Home fica no bundle inicial (primeira dobra); o resto entra por rota.
 import Home from '@/pages/Home'
 
@@ -33,6 +34,7 @@ export default function App() {
           <VersionBadge compact />
         </div>
       )}
+      <ErrorBoundary>
       <Suspense fallback={<div className="mx-auto max-w-4xl px-6 py-24 text-center font-body text-sm text-neutral-500">Carregando…</div>}>
       <Routes>
          <Route path="/player/minha-ficha/criar" element={<ProtectedRoute><CriarFicha key="self" mode="self" /></ProtectedRoute>} />
@@ -117,6 +119,7 @@ export default function App() {
         <Route path="/player/vtt" element={<ProtectedRoute><Vtt /></ProtectedRoute>} />
       </Routes>
       </Suspense>
+      </ErrorBoundary>
     </AuthProvider>
   )
 }
