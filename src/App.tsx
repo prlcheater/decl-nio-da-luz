@@ -20,6 +20,7 @@ const PainelElementalistas = lazy(() => import('@/pages/player/PainelElementalis
 const PainelInimigos = lazy(() => import('@/pages/player/PainelInimigos'))
 const FichaInimigo = lazy(() => import('@/pages/player/FichaInimigo'))
 const Combate = lazy(() => import('@/pages/player/Combate'))
+const Vtt = lazy(() => import('@/pages/player/Vtt'))
 
 export default function App() {
   const { pathname } = useLocation()
@@ -28,7 +29,7 @@ export default function App() {
       <SmoothScroll />
       <SiteBackground />
       <Navbar />
-      {pathname !== '/' && (
+      {pathname.startsWith('/player') && (
         <div className="fixed bottom-4 left-4 z-40">
           <VersionBadge compact />
         </div>
@@ -114,6 +115,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/player/vtt" element={<ProtectedRoute><Vtt /></ProtectedRoute>} />
       </Routes>
       </Suspense>
     </AuthProvider>
