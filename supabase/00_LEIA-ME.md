@@ -14,7 +14,8 @@ rodar mais de uma vez (idempotentes). Só o `01_schema.sql` exige banco vazio.
 | 06 | `06_elementos-e-reacoes.sql` | Marcas elementais e o primeiro lote de reações | Reaplicável |
 | 07 | `07_seed.sql` | Classes e elementos fixos | Reaplicável |
 | 08 | `08_beta-1.3-estados.sql` | *(previsto)* Estados/condições — Beta 1.3 | Nova |
-| 09 | `09_beta-1.4-vtt.sql` | *(previsto)* Mapa, tokens e desenho — Beta 1.4 (VTT) | Nova |
+| 09 | `09_beta-1.4-vtt.sql` | Mapa, tokens e desenho — Beta 1.4 (VTT) | Reaplicável |
+| 10 | `10_beta-1.4-mapa-storage.sql` | Bucket de Storage dos mapas (upload 16:9) | Reaplicável |
 
 ## Banco novo
 
@@ -22,7 +23,7 @@ rodar mais de uma vez (idempotentes). Só o `01_schema.sql` exige banco vazio.
 
 ## Banco que já está em uso
 
-Aplicado até `06` + `07`, normalmente **não rode nada de novo**. Cada beta nova traz
+Aplicado até `07` (a Beta 1.4 usa `09` e `10`), normalmente **não rode nada de novo**. Cada beta nova traz
 um patch novo (ex.: `08_beta-1.3-estados.sql`) e, nesse caso, **rode só o patch novo**.
 
 > Não reaplique `05_combate-servidor.sql` depois do `06_elementos-e-reacoes.sql`:

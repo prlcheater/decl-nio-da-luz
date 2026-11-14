@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { ENEMY_TIER_CONFIG, calculateEpMax, calculateHpMax } from '@/lib/diceEngine'
 import { clamp01, type BattleMapRow, type TokenRow } from '@/lib/vttTypes'
+import VttSetup from '@/components/vtt/VttSetup'
 import type { BattleRow, CharacterData, EnemyInstanceData, ParticipantRow, Target } from '@/lib/combatTypes'
 
 const SIDE_COLOR: Record<'aliado' | 'inimigo', string> = { aliado: '#38bdf8', inimigo: '#f87171' }
@@ -153,6 +154,7 @@ export default function Vtt() {
   }  if (authLoading || battle === undefined) return null
 
   if (!battle) {
+    if (isMestre) return <VttSetup mode="create" onDone={() => setReloadKey((k) => k + 1)} />
     return (
       <div className="mx-auto max-w-2xl px-6 py-24 text-center">
         <h1 className="font-title font-bold text-3xl">Mesa de combate</h1>
@@ -164,6 +166,10 @@ export default function Vtt() {
         </Link>
       </div>
     )
+  }
+
+  if (isMestre && !map) {
+    return <VttSetup mode="map" battleId={battle.id} onDone={() => setReloadKey((k) => k + 1)} />
   }
 
   return (

@@ -8,3 +8,5 @@ dist-ssr
 .vercel
 .claude/
 *.log
+check*.txt
+*_tail.txt
