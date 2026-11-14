@@ -279,3 +279,7 @@ O card Beta saiu da Home e passou a aparecer somente na area logada (`/player/*`
 ### 14/11/2026 — Beta 1.4, rodada 2: mapa por upload e setup do mestre
 
 O mapa do VTT agora vem de upload de arquivo local, recortado em 16:9 no cliente e guardado no Supabase Storage. Novo patch `supabase/10_beta-1.4-mapa-storage.sql` (bucket `battle-maps` público para leitura; envio e alteração apenas do mestre). Adicionados `src/lib/mapUpload.ts` (recorte 16:9 + upload) e `src/components/vtt/VttSetup.tsx`: o mestre prepara a mesa escolhendo o mapa e os participantes (fichas + quantidade de inimigos); o sistema cria o combate, as instâncias dos inimigos, o mapa e distribui os tokens automaticamente. Se já existe combate sem mapa, a tela pede apenas o mapa. Verificação: tsc, lint e testes (24/24).
+
+### 14/11/2026 — Beta 1.4, rodada 3: turno, alvo e leque de habilidades
+
+O VTT agora tem o ciclo de combate: destaque de quem age, botao de proximo turno/encerrar (via `combat_next_turn`), clique no alvo (inimigo = atacar, aliado = apoiar) abrindo o leque de habilidades (filtrando as prontas por PE, recarga e compatibilidade de alvo), execucao pela RPC `combat_use_ability` e dano colorido por severidade (reuso de `damageSeverity`) com o numero flutuante sobre o alvo. Marcas elementais aparecem nos tokens e os estados entram por Realtime. Novo componente `src/components/vtt/VttActionPanel.tsx`; `src/pages/player/Vtt.tsx` reescrita com o ciclo completo. Verificacao: tsc, lint e testes (24/24).
