@@ -148,7 +148,7 @@ export default function Vtt() {
   })
   const myChar = myParticipant?.character_id ? charactersById[myParticipant.character_id] : null
   const myTarget = myParticipant ? targets.get(myParticipant.id) ?? null : null
-  const myEpMax = myChar ? calculateEpMax({ intellect: myChar.intellect, level: myChar.level }) : 0
+  // PE maximo do proprio (usado via panelEpMax)
   const allies = participants.filter((p) => p.side === 'aliado')
   const enemies = participants.filter((p) => p.side === 'inimigo')
   const canAct = isMestre || (!!currentParticipant && !!myParticipant && currentParticipant.id === myParticipant.id)
@@ -163,6 +163,12 @@ export default function Vtt() {
       ? Math.round(calculateEpMax({ intellect: actorEnemy.enemies.intellect, level: actorEnemy.enemies.level }) * vidaMult(actorEnemy.enemies.tier))
       : 0
   const actorLabel = currentParticipant ? currentParticipant.name : ''
+
+  // Painel superior esquerdo: a propria ficha (se for participante) ou, para o mestre
+  // que nao esta instanciado, quem esta agindo agora.
+  const panelTarget = myTarget ?? (isMestre && currentParticipant ? targets.get(currentParticipant.id) ?? null : null)
+  const panelChar = myChar ?? (isMestre ? actorChar : null)
+  const panelEpMax = panelChar ? calculateEpMax({ intellect: panelChar.intellect, level: panelChar.level }) : 0
 
   useEffect(() => {
     if (!battle) { setEffects([]); return }
@@ -287,6 +293,29 @@ export default function Vtt() {
     return 0
   }
 
+  async function endBattle() {
+    if (!battle || busy) return
+    if (!window.confirm('Encerrar o combate ativo? O mapa e os efeitos serao removidos.')) return
+    setBusy(true)
+    setNotice(null)
+    try {
+      const { data: parts } = await supabase.from('battle_participants').select('enemy_instance_id').eq('battle_session_id', battle.id)
+      const instIds = ((parts as { enemy_instance_id: string | null }[]) ?? []).map((x) => x.enemy_instance_id).filter((v): v is string => !!v)
+      if (map && map.image_url) {
+        const marker = '/battle-maps/'
+        const idx = map.image_url.indexOf(marker)
+        if (idx >= 0) await supabase.storage.from('battle-maps').remove([decodeURIComponent(map.image_url.slice(idx + marker.length))])
+      }
+      await supabase.from('battle_effects').delete().eq('battle_session_id', battle.id)
+      await supabase.from('battle_maps').delete().eq('battle_session_id', battle.id)
+      const { error } = await supabase.from('battle_sessions').update({ status: 'ended' }).eq('id', battle.id)
+      if (error) { setNotice('Nao foi possivel encerrar: ' + error.message); return }
+      if (instIds.length) await supabase.from('enemy_instances').delete().in('id', instIds)
+      setSelectedId(null)
+      setReloadKey((k) => k + 1)
+    } finally { setBusy(false) }
+  }
+
   const onDone = () => setReloadKey((k) => k + 1)
 
   if (authLoading || battle === undefined) return null
@@ -305,7 +334,7 @@ export default function Vtt() {
   if (isMestre && !map) {
     return <VttSetup mode="map" battleId={battle.id} onDone={onDone} />
   }  return (
-    <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6">
+    <div className={(isMestre ? 'mx-auto max-w-7xl' : 'w-full') + ' px-2 py-3 sm:px-4'}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="font-title font-bold text-xl">Mesa de combate</h1>
@@ -316,6 +345,9 @@ export default function Vtt() {
             <button onClick={nextTurn} disabled={busy} className="rounded bg-white px-3 py-1.5 font-body text-xs font-semibold text-neutral-950 disabled:opacity-50">
               {isMestre ? 'Proximo turno' : 'Encerrar meu turno'}
             </button>
+          )}
+          {isMestre && (
+            <button onClick={endBattle} disabled={busy} className="rounded border border-red-500/60 px-3 py-1.5 font-body text-xs text-red-300 transition-colors hover:text-white disabled:opacity-50">Encerrar combate</button>
           )}
           <Link to="/player" className="font-body text-xs text-neutral-500 hover:text-white">Voltar</Link>
         </div>
@@ -394,18 +426,18 @@ export default function Vtt() {
           )
         })}
 
-        {myTarget && (
+        {panelTarget && (
           <div className="pointer-events-none absolute left-3 top-3 z-20 flex items-center gap-3 rounded-xl border border-sky-500/40 bg-neutral-950/80 p-2 pr-4 backdrop-blur">
             <div className="h-12 w-12 overflow-hidden rounded-full border border-sky-400/60 bg-neutral-900">
-              <HudPortrait url={myTarget.portraitUrl} name={myTarget.label} />
+              <HudPortrait url={panelTarget.portraitUrl} name={panelTarget.label} />
             </div>
             <div className="min-w-[120px]">
-              <p className="font-body text-xs text-neutral-200">{myTarget.label}</p>
+              <p className="font-body text-xs text-neutral-200">{panelTarget.label}</p>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
-                <div className="h-full bg-red-500" style={{ width: String(myTarget.hpMax > 0 ? (myTarget.hpCurrent / myTarget.hpMax) * 100 : 0) + '%' }} />
+                <div className="h-full bg-red-500" style={{ width: String(panelTarget.hpMax > 0 ? (panelTarget.hpCurrent / panelTarget.hpMax) * 100 : 0) + '%' }} />
               </div>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
-                <div className="h-full bg-sky-400" style={{ width: String(myEpMax > 0 && myChar ? (myChar.ep_current / myEpMax) * 100 : 0) + '%' }} />
+                <div className="h-full bg-sky-400" style={{ width: String(panelEpMax > 0 && panelChar ? (panelChar.ep_current / panelEpMax) * 100 : 0) + '%' }} />
               </div>
             </div>
           </div>
