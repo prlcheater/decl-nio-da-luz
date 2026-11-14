@@ -343,6 +343,7 @@ export default function Vtt() {
       {notice && <p role="status" className="mb-2 font-body text-sm text-amber-200">{notice}</p>}
 
       <div ref={containerRef} className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950">
+        {size.width > 0 && size.height > 0 && (
         <Stage width={size.width} height={size.height}>
           <Layer>
             {mapImage
@@ -381,6 +382,7 @@ export default function Vtt() {
             })}
           </Layer>
         </Stage>
+        )}
 
         {toasts.map((t) => {
           const tk = tokens.find((x) => x.participant_id === t.targetId)
