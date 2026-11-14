@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom'
 import { Circle, Group, Image as KonvaImage, Layer, Ring, Stage, Text as KonvaText } from 'react-konva'
 import { useAuth } from '@/lib/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { ENEMY_TIER_CONFIG, calculateEpMax, calculateHpMax, damageSeverity } from '@/lib/diceEngine'
+import { ENEMY_TIER_CONFIG, calculateEpMax, calculateHpMax, damageSeverity, resolveTest } from '@/lib/diceEngine'
 import { clamp01, type BattleMapRow, type TokenRow } from '@/lib/vttTypes'
 import VttSetup from '@/components/vtt/VttSetup'
 import VttActionPanel from '@/components/vtt/VttActionPanel'
 import type { AbilityRow, ActionResult, BattleRow, CharacterData, CooldownRow, EffectRow, EnemyInstanceData, ParticipantRow, Target } from '@/lib/combatTypes'
 
 const SIDE_COLOR: Record<'aliado' | 'inimigo', string> = { aliado: '#38bdf8', inimigo: '#f87171' }
+const TRAIT_LABEL: Record<'attack' | 'resistance' | 'agility' | 'intellect' | 'charisma', string> = { attack: 'Ataque', resistance: 'Resistência', agility: 'Agilidade', intellect: 'Intelecto', charisma: 'Carisma' }
 
 type DmgToast = { id: string; targetId: string; amount: number; color: string; label: string }
 
@@ -269,6 +270,17 @@ export default function Vtt() {
     } finally { setBusy(false) }
   }
 
+  function rollTrait(label: string, status: number) {
+    const r = resolveTest({ status, difficulty: 'regular' })
+    const flag = r.critico ? ' (crítico)' : r.falhaCritica ? ' (falha crítica)' : ''
+    setNotice(label + ': ' + r.total + flag + ' · dados ' + r.rolls.join(', '))
+  }
+  function actorTrait(key: 'attack' | 'resistance' | 'agility' | 'intellect' | 'charisma'): number {
+    if (actorChar) return actorChar[key]
+    if (actorEnemy) return actorEnemy.enemies[key]
+    return 0
+  }
+
   const onDone = () => setReloadKey((k) => k + 1)
 
   if (authLoading || battle === undefined) return null
@@ -302,6 +314,25 @@ export default function Vtt() {
           <Link to="/player" className="font-body text-xs text-neutral-500 hover:text-white">Voltar</Link>
         </div>
       </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {sorted.map((p, i) => (
+          <span key={p.id} className={'rounded-full border px-2 py-0.5 font-body text-[11px] ' + (i === turnIndex ? 'border-amber-300 text-amber-200' : 'border-neutral-700 text-neutral-400')}>
+            {i + 1}. {p.name}
+          </span>
+        ))}
+      </div>
+
+      {canAct && currentParticipant && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="font-body text-[11px] text-neutral-500">Testar traço:</span>
+          {(['attack', 'resistance', 'agility', 'intellect', 'charisma'] as const).map((k) => (
+            <button key={k} onClick={() => rollTrait(TRAIT_LABEL[k], actorTrait(k))} className="rounded border border-neutral-700 px-2 py-0.5 font-body text-[11px] text-neutral-300 hover:border-neutral-500">
+              {TRAIT_LABEL[k]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {notice && <p role="status" className="mb-2 font-body text-sm text-amber-200">{notice}</p>}
 
@@ -403,6 +434,11 @@ export default function Vtt() {
                   <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-neutral-800">
                     <div className="h-full bg-emerald-400" style={{ width: String(t && t.hpMax > 0 ? (t.hpCurrent / t.hpMax) * 100 : 0) + '%' }} />
                   </div>
+                  {p.character_id && charactersById[p.character_id] && (
+                    <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-neutral-800">
+                      <div className="h-full bg-sky-400" style={{ width: String((charactersById[p.character_id].ep_current / Math.max(1, calculateEpMax({ intellect: charactersById[p.character_id].intellect, level: charactersById[p.character_id].level }))) * 100) + '%' }} />
+                    </div>
+                  )}
                 </div>
               </div>
             )

@@ -393,7 +393,7 @@ export default function MinhaFicha() {
           <div className="relative">
             {hasActiveBattle ? (
               <Link
-                to="/player/combate"
+                to="/player/vtt"
                 className="flex items-center gap-1.5 font-body text-xs font-semibold text-white transition-transform duration-300 hover:scale-105"
               >
                 <Swords size={14} strokeWidth={1.75} style={{ filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.65))' }} />

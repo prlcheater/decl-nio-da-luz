@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { useLocation, Route, Routes } from 'react-router-dom'
+import { useLocation, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/lib/AuthContext'
 import Navbar from '@/components/Navbar'
 import VersionBadge from '@/components/VersionBadge'
@@ -19,7 +19,6 @@ const PainelMestre = lazy(() => import('@/pages/player/PainelMestre'))
 const PainelElementalistas = lazy(() => import('@/pages/player/PainelElementalistas'))
 const PainelInimigos = lazy(() => import('@/pages/player/PainelInimigos'))
 const FichaInimigo = lazy(() => import('@/pages/player/FichaInimigo'))
-const Combate = lazy(() => import('@/pages/player/Combate'))
 const Vtt = lazy(() => import('@/pages/player/Vtt'))
 
 export default function App() {
@@ -111,7 +110,7 @@ export default function App() {
           path="/player/combate"
           element={
             <ProtectedRoute>
-              <Combate />
+              <Navigate to="/player/vtt" replace />
             </ProtectedRoute>
           }
         />

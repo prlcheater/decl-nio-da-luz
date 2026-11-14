@@ -34,7 +34,7 @@ Estética: **RPG futurista**, escuro, luminoso e animado (componentes React Bits
 |---|---|
 | `src/lib/diceEngine.ts` | Motor puro de dados e dano (sem React/Supabase) |
 | `src/lib/gameData.ts` | Elementos, classes e roadmap do Expresso Astral (conteúdo fixo) |
-| `src/pages/player/Combate.tsx` | Combate (~1.200 linhas) |
+| `src/pages/player/Vtt.tsx` | Mesa de combate (VTT): mapa, tokens, turnos e ações |
 | `src/pages/player/MinhaFicha.tsx` | Ficha (~1.300 linhas) |
 | `supabase/01_schema.sql` … `07_seed.sql` (índice em `00_LEIA-ME.md`) | Banco, RLS, funções e dados fixos |
 | `docs/MANUAL DECLÍNIO.docx` | Manual de regras e lore escrito por Paulo |
@@ -283,3 +283,11 @@ O mapa do VTT agora vem de upload de arquivo local, recortado em 16:9 no cliente
 ### 14/11/2026 — Beta 1.4, rodada 3: turno, alvo e leque de habilidades
 
 O VTT agora tem o ciclo de combate: destaque de quem age, botao de proximo turno/encerrar (via `combat_next_turn`), clique no alvo (inimigo = atacar, aliado = apoiar) abrindo o leque de habilidades (filtrando as prontas por PE, recarga e compatibilidade de alvo), execucao pela RPC `combat_use_ability` e dano colorido por severidade (reuso de `damageSeverity`) com o numero flutuante sobre o alvo. Marcas elementais aparecem nos tokens e os estados entram por Realtime. Novo componente `src/components/vtt/VttActionPanel.tsx`; `src/pages/player/Vtt.tsx` reescrita com o ciclo completo. Verificacao: tsc, lint e testes (24/24).
+
+### 14/11/2026 — Beta 1.4, rodada 4: polimento do VTT
+
+Ordem de iniciativa em faixa no topo (turno atual destacado), barra de PE dos aliados na HUD e botoes de "testar traco" (rolagem pelo motor, resultado na linha de aviso) para quem tem o turno.
+
+### 14/11/2026 — Beta 1.4, rodada 5: combate legado aposentado; higienizacao
+
+A rota `/player/combate` agora redireciona para `/player/vtt` e o arquivo `src/pages/player/Combate.tsx` foi removido. O card "Combate (legado)" saiu do painel do mestre e o link da ficha aponta para a Mesa de combate. Auditoria confirmou que `AbilityCombatStatus` e `ImageCropModal` seguem em uso. Verificacao: tsc, lint e testes (24/24).

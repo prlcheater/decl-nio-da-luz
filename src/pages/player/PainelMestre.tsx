@@ -11,7 +11,7 @@ const MENU_ITEMS = [
   { to: '/player/mestre/elementalistas', label: 'Elementalistas', desc: 'Ver, criar e gerenciar as fichas dos jogadores.', icon: Sparkles },
   { to: '/player/mestre/inimigos', label: 'Inimigos', desc: 'Cadastrar inimigos e instâncias de combate.', icon: Skull },
   { to: '/player/vtt', label: 'Mesa de combate', desc: 'Mapa, tokens e acao por turnos no tabuleiro.', icon: Swords },
-  { to: '/player/combate', label: 'Combate (legado)', desc: 'Montar e controlar o combate ativo (interface antiga).', icon: Swords },
+  // O combate legado foi aposentado; a Mesa de combate (VTT) o substitui.
 ]
 
 export default function PainelMestre() {
