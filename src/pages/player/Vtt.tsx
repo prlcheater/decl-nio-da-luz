@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Circle, Group, Image as KonvaImage, Layer, Ring, Stage, Text as KonvaText } from 'react-konva'
 import { useAuth } from '@/lib/AuthContext'
@@ -25,7 +25,7 @@ function useLoadedImage(url: string | null) {
   useEffect(() => {
     if (!url) { setImage(null); return }
     const img = new window.Image()
-    img.crossOrigin = 'anonymous'
+    // sem crossOrigin: a imagem publica carrega mesmo sem cabecalho CORS
     img.src = url
     img.onload = () => setImage(img)
     img.onerror = () => setImage(null)
@@ -35,18 +35,22 @@ function useLoadedImage(url: string | null) {
 }
 
 function useElementSize<T extends HTMLElement>() {
-  const ref = useRef<T | null>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const observer = new ResizeObserver((entries) => {
-      const box = entries[0]?.contentRect
-      if (box) setSize({ width: Math.round(box.width), height: Math.round(box.height) })
-    })
-    observer.observe(el)
-    return () => observer.disconnect()
+  const observerRef = useRef<ResizeObserver | null>(null)
+  // Callback ref: mede assim que o elemento entra no DOM (funciona com render tardio).
+  const ref = useCallback((node: T | null) => {
+    if (observerRef.current) { observerRef.current.disconnect(); observerRef.current = null }
+    if (!node) return
+    const measure = () => {
+      const rect = node.getBoundingClientRect()
+      if (rect.width > 0 && rect.height > 0) setSize({ width: Math.round(rect.width), height: Math.round(rect.height) })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    observerRef.current = observer
   }, [])
+  useEffect(() => () => { if (observerRef.current) observerRef.current.disconnect() }, [])
   return { ref, size }
 }
 
@@ -73,6 +77,9 @@ export default function Vtt() {
   const [notice, setNotice] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const { ref: containerRef, size } = useElementSize<HTMLDivElement>()
+  // Fallback garante que o Stage nunca nasce 0x0 (evita o erro de drawImage).
+  const stageW = size.width > 0 ? size.width : 1280
+  const stageH = size.height > 0 ? size.height : 720
   const mapImage = useLoadedImage(map?.image_url ?? null)
   useEffect(() => {
     let active = true
@@ -164,11 +171,11 @@ export default function Vtt() {
       : 0
   const actorLabel = currentParticipant ? currentParticipant.name : ''
 
-  // Painel superior esquerdo: a propria ficha (se for participante) ou, para o mestre
-  // que nao esta instanciado, quem esta agindo agora.
-  const panelTarget = myTarget ?? (isMestre && currentParticipant ? targets.get(currentParticipant.id) ?? null : null)
-  const panelChar = myChar ?? (isMestre ? actorChar : null)
-  const panelEpMax = panelChar ? calculateEpMax({ intellect: panelChar.intellect, level: panelChar.level }) : 0
+  // Painel superior esquerdo: apenas a propria ficha (quando houver).
+
+  const panelTarget = myTarget
+  const panelChar = myChar
+  const panelEpMax = myChar ? calculateEpMax({ intellect: myChar.intellect, level: myChar.level }) : 0
 
   useEffect(() => {
     if (!battle) { setEffects([]); return }
@@ -375,17 +382,16 @@ export default function Vtt() {
       {notice && <p role="status" className="mb-2 font-body text-sm text-amber-200">{notice}</p>}
 
       <div ref={containerRef} className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950">
-        {size.width > 0 && size.height > 0 && (
-        <Stage width={size.width} height={size.height}>
+                <Stage width={stageW} height={stageH}>
           <Layer>
             {mapImage
-              ? <KonvaImage image={mapImage} width={size.width} height={size.height} />
+              ? <KonvaImage image={mapImage} width={stageW} height={stageH} />
               : <KonvaText text="Sem mapa - o mestre ainda nao enviou uma imagem." x={16} y={16} fill="#737373" fontSize={14} />}
             {tokens.map((t) => {
               const target = targets.get(t.participant_id) ?? null
-              const cx = t.x * size.width
-              const cy = t.y * size.height
-              const w = Math.max(1, size.width)
+              const cx = t.x * stageW
+              const cy = t.y * stageH
+              const w = Math.max(1, stageW)
               const r = Math.max(14, w * (t.size || 0.06))
               const pct = target && target.hpMax > 0 ? Math.max(0, Math.min(1, target.hpCurrent / target.hpMax)) : 0
               const side = target?.side ?? 'inimigo'
@@ -398,7 +404,7 @@ export default function Vtt() {
                   draggable={canMove(t.participant_id)}
                   onClick={() => onTokenClick(t.participant_id)}
                   onTap={() => onTokenClick(t.participant_id)}
-                  onDragEnd={(e) => moveToken(t, e.target.x() / w, e.target.y() / Math.max(1, size.height))}
+                  onDragEnd={(e) => moveToken(t, e.target.x() / w, e.target.y() / Math.max(1, stageH))}
                 >
                   <Circle radius={r + 6} fill="#0a0a0a" opacity={0.5} />
                   <Circle radius={r} fill={t.color ?? SIDE_COLOR[side]} opacity={0.92} stroke="#0a0a0a" strokeWidth={2} />
@@ -414,13 +420,12 @@ export default function Vtt() {
             })}
           </Layer>
         </Stage>
-        )}
 
         {toasts.map((t) => {
           const tk = tokens.find((x) => x.participant_id === t.targetId)
           if (!tk) return null
           return (
-            <div key={t.id} className="pointer-events-none absolute z-40 font-title text-3xl font-bold" style={{ left: tk.x * size.width, top: tk.y * size.height - 24, color: t.color, transform: 'translate(-50%, -50%)', textShadow: '0 0 10px #000' }}>
+            <div key={t.id} className="pointer-events-none absolute z-40 font-title text-3xl font-bold" style={{ left: tk.x * stageW, top: tk.y * stageH - 24, color: t.color, transform: 'translate(-50%, -50%)', textShadow: '0 0 10px #000' }}>
               {t.amount}
             </div>
           )
