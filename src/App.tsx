@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { useLocation, Route, Routes } from 'react-router-dom'
+import { useLocation, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/lib/AuthContext'
 import Navbar from '@/components/Navbar'
 import VersionBadge from '@/components/VersionBadge'
@@ -19,7 +19,7 @@ const PainelMestre = lazy(() => import('@/pages/player/PainelMestre'))
 const PainelElementalistas = lazy(() => import('@/pages/player/PainelElementalistas'))
 const PainelInimigos = lazy(() => import('@/pages/player/PainelInimigos'))
 const FichaInimigo = lazy(() => import('@/pages/player/FichaInimigo'))
-const Combate = lazy(() => import('@/pages/player/Combate'))
+const Vtt = lazy(() => import('@/pages/player/Vtt'))
 
 export default function App() {
   const { pathname } = useLocation()
@@ -28,7 +28,7 @@ export default function App() {
       <SmoothScroll />
       <SiteBackground />
       <Navbar />
-      {pathname !== '/' && (
+      {pathname.startsWith('/player') && (
         <div className="fixed bottom-4 left-4 z-40">
           <VersionBadge compact />
         </div>
@@ -110,10 +110,11 @@ export default function App() {
           path="/player/combate"
           element={
             <ProtectedRoute>
-              <Combate />
+              <Navigate to="/player/vtt" replace />
             </ProtectedRoute>
           }
         />
+        <Route path="/player/vtt" element={<ProtectedRoute><Vtt /></ProtectedRoute>} />
       </Routes>
       </Suspense>
     </AuthProvider>

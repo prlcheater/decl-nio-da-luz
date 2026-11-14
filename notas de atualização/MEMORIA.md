@@ -34,7 +34,7 @@ Estética: **RPG futurista**, escuro, luminoso e animado (componentes React Bits
 |---|---|
 | `src/lib/diceEngine.ts` | Motor puro de dados e dano (sem React/Supabase) |
 | `src/lib/gameData.ts` | Elementos, classes e roadmap do Expresso Astral (conteúdo fixo) |
-| `src/pages/player/Combate.tsx` | Combate (~1.200 linhas) |
+| `src/pages/player/Vtt.tsx` | Mesa de combate (VTT): mapa, tokens, turnos e ações |
 | `src/pages/player/MinhaFicha.tsx` | Ficha (~1.300 linhas) |
 | `supabase/01_schema.sql` … `07_seed.sql` (índice em `00_LEIA-ME.md`) | Banco, RLS, funções e dados fixos |
 | `docs/MANUAL DECLÍNIO.docx` | Manual de regras e lore escrito por Paulo |
@@ -268,3 +268,26 @@ O `package.json` voltou a versionar de verdade (`1.2.0`) e o Vite injeta esse va
 ### 13/11/2026 — Beta 1.2, rodada 6: tipos de combate em módulo próprio
 
 Os tipos de linha de tabela e de resultado das RPCs de combate saíram de `Combate.tsx` para `src/lib/combatTypes.ts` (`BattleRow`, `EffectRow`, `ParticipantRow`, `CharacterData`, `EnemyInstanceData`, `AbilityRow`, `Target`, toasts, `DistributiveOmit`, etc.). Movimentação sem mudança de comportamento: reduz a duplicação e prepara o reúso no VTT (Beta 1.4). Verificação: lint, testes e build em verde.
+
+### 13/11/2026 — Beta 1.2 publicada na main; início do alicerce da Beta 1.3
+
+A Beta 1.2 (limpeza de artefatos, scripts SQL numerados, lint/Vitest, RNG injetável, code splitting, versionamento com a box Beta azul e extração dos tipos de combate) foi integrada à `main` (merge `6885139`) e enviada ao GitHub — a Vercel publica a partir daí. **Sem alterações de banco.** Início da Beta 1.3: criado o catálogo de condições de combate em `src/lib/conditions.ts` (queimadura, veneno, corrosão, lentidão, foco, regeneração), com valores **provisórios** centralizados e testes em `src/lib/conditions.test.ts`. A ligação ao combate e o patch `08_beta-1.3-estados.sql` entram nas próximas rodadas.
+
+### 13/11/2026 — Beta 1.4, rodada 1: alicerce do VTT e ajuste do card Beta
+
+O card Beta saiu da Home e passou a aparecer somente na area logada (`/player/*`), no mesmo canto inferior esquerdo. Inicio do VTT: criado o patch `supabase/09_beta-1.4-vtt.sql` (battle_maps, battle_tokens, battle_strokes; RLS com dono/mestre; RPC `vtt_move_token`; Realtime) — aplicar no Supabase. Adicionado `src/lib/vttTypes.ts`, instalados `konva` e `react-konva` e criada a pagina `src/pages/player/Vtt.tsx` (rota `/player/vtt` e card "Mesa de combate" no painel do mestre): mapa de fundo, tokens circulares arrastaveis (dono/mestre) com anel de PV, HUD do jogador (sup. esq.), inimigos (sup. dir.) e aliados (inf. esq.), sincronizacao por Realtime. Proximas rodadas: turno, selecao de alvo e leque de habilidades; mapa/participantes no setup do mestre. Verificacao: tsc, lint e testes (24/24) em verde.
+### 14/11/2026 — Beta 1.4, rodada 2: mapa por upload e setup do mestre
+
+O mapa do VTT agora vem de upload de arquivo local, recortado em 16:9 no cliente e guardado no Supabase Storage. Novo patch `supabase/10_beta-1.4-mapa-storage.sql` (bucket `battle-maps` público para leitura; envio e alteração apenas do mestre). Adicionados `src/lib/mapUpload.ts` (recorte 16:9 + upload) e `src/components/vtt/VttSetup.tsx`: o mestre prepara a mesa escolhendo o mapa e os participantes (fichas + quantidade de inimigos); o sistema cria o combate, as instâncias dos inimigos, o mapa e distribui os tokens automaticamente. Se já existe combate sem mapa, a tela pede apenas o mapa. Verificação: tsc, lint e testes (24/24).
+
+### 14/11/2026 — Beta 1.4, rodada 3: turno, alvo e leque de habilidades
+
+O VTT agora tem o ciclo de combate: destaque de quem age, botao de proximo turno/encerrar (via `combat_next_turn`), clique no alvo (inimigo = atacar, aliado = apoiar) abrindo o leque de habilidades (filtrando as prontas por PE, recarga e compatibilidade de alvo), execucao pela RPC `combat_use_ability` e dano colorido por severidade (reuso de `damageSeverity`) com o numero flutuante sobre o alvo. Marcas elementais aparecem nos tokens e os estados entram por Realtime. Novo componente `src/components/vtt/VttActionPanel.tsx`; `src/pages/player/Vtt.tsx` reescrita com o ciclo completo. Verificacao: tsc, lint e testes (24/24).
+
+### 14/11/2026 — Beta 1.4, rodada 4: polimento do VTT
+
+Ordem de iniciativa em faixa no topo (turno atual destacado), barra de PE dos aliados na HUD e botoes de "testar traco" (rolagem pelo motor, resultado na linha de aviso) para quem tem o turno.
+
+### 14/11/2026 — Beta 1.4, rodada 5: combate legado aposentado; higienizacao
+
+A rota `/player/combate` agora redireciona para `/player/vtt` e o arquivo `src/pages/player/Combate.tsx` foi removido. O card "Combate (legado)" saiu do painel do mestre e o link da ficha aponta para a Mesa de combate. Auditoria confirmou que `AbilityCombatStatus` e `ImageCropModal` seguem em uso. Verificacao: tsc, lint e testes (24/24).
