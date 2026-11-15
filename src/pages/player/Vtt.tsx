@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Info, Maximize, Minimize } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Circle, Group, Image as KonvaImage, Layer, Ring, Stage, Text as KonvaText } from 'react-konva'
 import { useAuth } from '@/lib/AuthContext'
@@ -13,6 +14,9 @@ const SIDE_COLOR: Record<'aliado' | 'inimigo', string> = { aliado: '#38bdf8', in
 const TRAIT_LABEL: Record<'attack' | 'resistance' | 'agility' | 'intellect' | 'charisma', string> = { attack: 'Ataque', resistance: 'Resistência', agility: 'Agilidade', intellect: 'Intelecto', charisma: 'Carisma' }
 
 // Multiplicador de vida por tier com fallback (tier inesperado não derruba a tela).
+const BASE_TOKEN_RADIUS = 0.022
+const TIER_TOKEN_MULT: Record<string, number> = { comum: 1, elite: 1.25, boss: 1.5625 }
+
 function vidaMult(tier: string): number {
   const cfg = (ENEMY_TIER_CONFIG as Record<string, { vidaMult: number }>)[tier]
   return cfg ? cfg.vidaMult : 1
@@ -60,6 +64,46 @@ function HudPortrait({ url, name }: { url: string | null; name: string }) {
     : <span className="flex h-full w-full items-center justify-center text-[10px] text-neutral-400">{name.slice(0, 2).toUpperCase()}</span>
 }
 
+function VttToken({ x, y, r, imageUrl, side, hpPct, label, isCurrent, isSelected, markCount, draggable, onSelect, onMove }: {
+  x: number
+  y: number
+  r: number
+  imageUrl: string | null
+  side: 'aliado' | 'inimigo'
+  hpPct: number
+  label: string
+  isCurrent: boolean
+  isSelected: boolean
+  markCount: number
+  draggable: boolean
+  onSelect: () => void
+  onMove: (x: number, y: number) => void
+}) {
+  const image = useLoadedImage(imageUrl)
+  const ok = !!image && image.width > 0 && image.height > 0
+  const sq = ok ? Math.min(image.width, image.height) : 0
+  return (
+    <Group x={x} y={y} draggable={draggable} onClick={onSelect} onTap={onSelect} onDragEnd={(e) => onMove(e.target.x(), e.target.y())}>
+      <Circle radius={r + 5} fill="#0a0a0a" opacity={0.55} />
+      {ok ? (
+        <Group clipFunc={(ctx) => { ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.closePath() }}>
+          <KonvaImage image={image} crop={{ x: (image.width - sq) / 2, y: (image.height - sq) / 2, width: sq, height: sq }} x={-r} y={-r} width={r * 2} height={r * 2} />
+        </Group>
+      ) : (
+        <Circle radius={r} fill={SIDE_COLOR[side]} opacity={0.92} />
+      )}
+      <Circle radius={r} stroke="#0a0a0a" strokeWidth={2} />
+      <Ring innerRadius={r + 2} outerRadius={r + 5} stroke={side === "aliado" ? "#38bdf8" : "#ef4444"} strokeWidth={3} rotation={-90} angle={hpPct * 360} opacity={0.95} />
+      {isCurrent && <Ring innerRadius={r + 8} outerRadius={r + 12} stroke="#fde047" strokeWidth={3} opacity={0.95} />}
+      {isSelected && <Ring innerRadius={r + 8} outerRadius={r + 12} stroke="#ffffff" strokeWidth={3} opacity={0.95} />}
+      {Array.from({ length: markCount }).map((_v, mi) => (
+        <Circle key={mi} x={-r + 4 + mi * 10} y={-r - 8} radius={4} fill="#22d3ee" stroke="#0a0a0a" strokeWidth={1} />
+      ))}
+      <KonvaText text={label} x={-r - 24} y={r + 6} width={r * 2 + 48} align="center" fontSize={Math.max(10, Math.round(r * 0.5))} fill="#e5e5e5" />
+    </Group>
+  )
+}
+
 export default function Vtt() {
   const { session, isMestre, loading: authLoading } = useAuth()
   const [battle, setBattle] = useState<BattleRow | null | undefined>(undefined)
@@ -76,11 +120,28 @@ export default function Vtt() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [preview, setPreview] = useState(false)
+  const [isFull, setIsFull] = useState(false)
+  const [tokenScale, setTokenScale] = useState(() => {
+    const raw = typeof window === 'undefined' ? null : window.localStorage.getItem('vtt.tokenScale')
+    const value = raw ? Number(raw) : 1
+    return Number.isFinite(value) && value > 0 ? value : 1
+  })
   const { ref: containerRef, size } = useElementSize<HTMLDivElement>()
   // Fallback garante que o Stage nunca nasce 0x0 (evita o erro de drawImage).
   const stageW = size.width > 0 ? size.width : 1280
   const stageH = size.height > 0 ? size.height : 720
   const mapImage = useLoadedImage(map?.image_url ?? null)
+  const masterView = isMestre && !preview
+  useEffect(() => {
+    const onChange = () => setIsFull(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+  function toggleFullscreen() {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+    else document.documentElement.requestFullscreen().catch(() => {})
+  }
   useEffect(() => {
     let active = true
     async function run() {
@@ -158,7 +219,7 @@ export default function Vtt() {
   // PE maximo do proprio (usado via panelEpMax)
   const allies = participants.filter((p) => p.side === 'aliado')
   const enemies = participants.filter((p) => p.side === 'inimigo')
-  const canAct = isMestre || (!!currentParticipant && !!myParticipant && currentParticipant.id === myParticipant.id)
+  const canAct = masterView || (!!currentParticipant && !!myParticipant && currentParticipant.id === myParticipant.id)
   const selectedTarget = selectedId ? targets.get(selectedId) ?? null : null
 
   const actorChar = currentParticipant?.character_id ? charactersById[currentParticipant.character_id] : null
@@ -223,7 +284,7 @@ export default function Vtt() {
   }, [])
 
   function canMove(participantId: string): boolean {
-    if (isMestre) return true
+    if (masterView) return true
     const p = participants.find((x) => x.id === participantId)
     const c = p?.character_id ? charactersById[p.character_id] : null
     return !!c && !!session && c.user_id === session.user.id
@@ -350,12 +411,21 @@ export default function Vtt() {
         <div className="flex items-center gap-3">
           {canAct && (
             <button onClick={nextTurn} disabled={busy} className="rounded bg-white px-3 py-1.5 font-body text-xs font-semibold text-neutral-950 disabled:opacity-50">
-              {isMestre ? 'Proximo turno' : 'Encerrar meu turno'}
+              {masterView ? 'Proximo turno' : 'Encerrar meu turno'}
             </button>
           )}
-          {isMestre && (
+          {masterView && (
             <button onClick={endBattle} disabled={busy} className="rounded border border-red-500/60 px-3 py-1.5 font-body text-xs text-red-300 transition-colors hover:text-white disabled:opacity-50">Encerrar combate</button>
           )}
+          {isMestre && (
+            <button onClick={() => setPreview((v) => !v)} className="rounded border border-sky-500/60 px-3 py-1.5 font-body text-xs text-sky-300 transition-colors hover:text-white">
+              {preview ? 'Sair da visualizacao' : 'Testar visualizacao'}
+            </button>
+          )}
+          <button onClick={toggleFullscreen} title="Voce pode jogar em tela cheia" className="flex items-center gap-1 rounded border border-neutral-700 px-2 py-1.5 font-body text-xs text-neutral-300 hover:text-white">
+            {isFull ? <Minimize size={14} /> : <Maximize size={14} />}
+            <Info size={13} className="text-neutral-500" />
+          </button>
           <Link to="/player" className="font-body text-xs text-neutral-500 hover:text-white">Voltar</Link>
         </div>
       </div>
@@ -387,35 +457,32 @@ export default function Vtt() {
             {mapImage
               ? <KonvaImage image={mapImage} width={stageW} height={stageH} />
               : <KonvaText text="Sem mapa - o mestre ainda nao enviou uma imagem." x={16} y={16} fill="#737373" fontSize={14} />}
-            {tokens.map((t) => {
+                        {tokens.map((t) => {
               const target = targets.get(t.participant_id) ?? null
-              const cx = t.x * stageW
-              const cy = t.y * stageH
-              const w = Math.max(1, stageW)
-              const r = Math.max(14, w * (t.size || 0.06))
-              const pct = target && target.hpMax > 0 ? Math.max(0, Math.min(1, target.hpCurrent / target.hpMax)) : 0
-              const side = target?.side ?? 'inimigo'
-              const isCurrent = !!currentParticipant && currentParticipant.id === t.participant_id
+              const participant = participants.find((x) => x.id === t.participant_id) ?? null
+              const inst = participant && participant.enemy_instance_id ? instancesById[participant.enemy_instance_id] : null
+              const tierMult = inst ? (TIER_TOKEN_MULT[inst.enemies.tier] || 1) : 1
+              const scale = masterView ? tokenScale : 1
+              const r = Math.max(12, stageW * BASE_TOKEN_RADIUS * scale * tierMult)
+              const hpPct = target && target.hpMax > 0 ? Math.max(0, Math.min(1, target.hpCurrent / target.hpMax)) : 0
+              const markCount = effects.filter((e) => e.kind === 'marca' && e.target_participant_id === t.participant_id).length
               return (
-                <Group
+                <VttToken
                   key={t.id}
-                  x={cx}
-                  y={cy}
+                  x={t.x * stageW}
+                  y={t.y * stageH}
+                  r={r}
+                  imageUrl={target ? target.portraitUrl : null}
+                  side={target ? target.side : 'inimigo'}
+                  hpPct={hpPct}
+                  label={t.label}
+                  isCurrent={!!currentParticipant && currentParticipant.id === t.participant_id}
+                  isSelected={selectedId === t.participant_id}
+                  markCount={markCount}
                   draggable={canMove(t.participant_id)}
-                  onClick={() => onTokenClick(t.participant_id)}
-                  onTap={() => onTokenClick(t.participant_id)}
-                  onDragEnd={(e) => moveToken(t, e.target.x() / w, e.target.y() / Math.max(1, stageH))}
-                >
-                  <Circle radius={r + 6} fill="#0a0a0a" opacity={0.5} />
-                  <Circle radius={r} fill={t.color ?? SIDE_COLOR[side]} opacity={0.92} stroke="#0a0a0a" strokeWidth={2} />
-                  <Ring innerRadius={r + 2} outerRadius={r + 6} stroke={side === 'aliado' ? '#38bdf8' : '#ef4444'} strokeWidth={3} rotation={-90} angle={pct * 360} opacity={0.95} />
-                  {isCurrent && <Ring innerRadius={r + 9} outerRadius={r + 13} stroke="#fde047" strokeWidth={3} opacity={0.95} />}
-                  {selectedId === t.participant_id && <Ring innerRadius={r + 9} outerRadius={r + 13} stroke="#ffffff" strokeWidth={3} opacity={0.95} />}
-                  <KonvaText text={t.label} x={-r - 24} y={r + 6} width={r * 2 + 48} align="center" fontSize={11} fill="#e5e5e5" />
-                  {effects.filter((e) => e.kind === 'marca' && e.target_participant_id === t.participant_id).map((e, mi) => (
-                    <Circle key={e.id} x={-r + 4 + mi * 10} y={-r - 8} radius={4} fill="#22d3ee" stroke="#0a0a0a" strokeWidth={1} />
-                  ))}
-                </Group>
+                  onSelect={() => onTokenClick(t.participant_id)}
+                  onMove={(nx, ny) => moveToken(t, nx / Math.max(1, stageW), ny / Math.max(1, stageH))}
+                />
               )
             })}
           </Layer>
@@ -510,6 +577,14 @@ export default function Vtt() {
       <p className="mt-3 font-body text-xs text-neutral-500">
         {canAct ? 'Clique no inimigo para atacar ou no aliado para apoiar.' : 'Aguardando o seu turno. Voce pode arrastar o seu personagem.'}
       </p>
+      {masterView && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-neutral-800 bg-neutral-950/70 p-3">
+          <span className="font-body text-xs text-neutral-400">Tamanho dos tokens</span>
+          <input type="range" min={0.6} max={1.8} step={0.05} value={tokenScale} onChange={(e) => { const v = Number(e.target.value); setTokenScale(v); window.localStorage.setItem('vtt.tokenScale', String(v)) }} className="w-48" />
+          <span className="font-body text-xs text-neutral-300">{tokenScale.toFixed(2)}x</span>
+          <span className="font-body text-[11px] text-neutral-600">Aliados iguais - comuns = aliados - elite +25% - chefe +56%</span>
+        </div>
+      )}
     </div>
   )
 }
