@@ -10,7 +10,12 @@ import VttSetup from '@/components/vtt/VttSetup'
 import VttActionPanel from '@/components/vtt/VttActionPanel'
 import type { AbilityRow, ActionResult, BattleRow, CharacterData, CooldownRow, EffectRow, EnemyInstanceData, ParticipantRow, Target } from '@/lib/combatTypes'
 
-const SIDE_COLOR: Record<'aliado' | 'inimigo', string> = { aliado: '#38bdf8', inimigo: '#f87171' }
+const ALLY_RING = { color: '#38bdf8', glow: '#0ea5e9' }
+const ENEMY_RING: Record<string, { color: string; glow: string }> = {
+  comum: { color: '#fca5a5', glow: '#f87171' },
+  elite: { color: '#ef4444', glow: '#dc2626' },
+  boss: { color: '#ff2d2d', glow: '#ff0000' },
+}
 const TRAIT_LABEL: Record<'attack' | 'resistance' | 'agility' | 'intellect' | 'charisma', string> = { attack: 'Ataque', resistance: 'Resistência', agility: 'Agilidade', intellect: 'Intelecto', charisma: 'Carisma' }
 
 // Multiplicador de vida por tier com fallback (tier inesperado não derruba a tela).
@@ -64,14 +69,14 @@ function HudPortrait({ url, name }: { url: string | null; name: string }) {
     : <span className="flex h-full w-full items-center justify-center text-[10px] text-neutral-400">{name.slice(0, 2).toUpperCase()}</span>
 }
 
-function VttToken({ x, y, r, imageUrl, side, hpPct, label, isCurrent, isSelected, markCount, draggable, onSelect, onMove }: {
+function VttToken({ x, y, r, imageUrl, ringColor, glow, hpPct, isCurrent, isSelected, markCount, draggable, onSelect, onMove }: {
   x: number
   y: number
   r: number
   imageUrl: string | null
-  side: 'aliado' | 'inimigo'
+  ringColor: string
+  glow: string
   hpPct: number
-  label: string
   isCurrent: boolean
   isSelected: boolean
   markCount: number
@@ -83,23 +88,22 @@ function VttToken({ x, y, r, imageUrl, side, hpPct, label, isCurrent, isSelected
   const ok = !!image && image.width > 0 && image.height > 0
   const sq = ok ? Math.min(image.width, image.height) : 0
   return (
-    <Group x={x} y={y} draggable={draggable} onClick={onSelect} onTap={onSelect} onDragEnd={(e) => onMove(e.target.x(), e.target.y())}>
-      <Circle radius={r + 5} fill="#0a0a0a" opacity={0.55} />
+    <Group x={x} y={y} draggable={draggable} perfectDrawEnabled={false} onClick={onSelect} onTap={onSelect} onDragEnd={(e) => onMove(e.target.x(), e.target.y())}>
+      <Circle radius={r + 2} fill="#000000" opacity={0.55} />
       {ok ? (
         <Group clipFunc={(ctx) => { ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.closePath() }}>
           <KonvaImage image={image} crop={{ x: (image.width - sq) / 2, y: (image.height - sq) / 2, width: sq, height: sq }} x={-r} y={-r} width={r * 2} height={r * 2} />
         </Group>
       ) : (
-        <Circle radius={r} fill={SIDE_COLOR[side]} opacity={0.92} />
+        <Circle radius={r} fill={ringColor} opacity={0.85} />
       )}
-      <Circle radius={r} stroke="#0a0a0a" strokeWidth={2} />
-      <Ring innerRadius={r + 2} outerRadius={r + 5} stroke={side === "aliado" ? "#38bdf8" : "#ef4444"} strokeWidth={3} rotation={-90} angle={hpPct * 360} opacity={0.95} />
-      {isCurrent && <Ring innerRadius={r + 8} outerRadius={r + 12} stroke="#fde047" strokeWidth={3} opacity={0.95} />}
-      {isSelected && <Ring innerRadius={r + 8} outerRadius={r + 12} stroke="#ffffff" strokeWidth={3} opacity={0.95} />}
+      <Circle radius={r} stroke={ringColor} strokeWidth={2} shadowColor={glow} shadowBlur={10} shadowOpacity={0.9} shadowForStrokeEnabled />
+      <Ring innerRadius={r + 3} outerRadius={r + 4.5} stroke={ringColor} strokeWidth={2} rotation={-90} angle={hpPct * 360} opacity={0.9} />
+      {isCurrent && <Ring innerRadius={r + 6} outerRadius={r + 7.5} stroke="#fde047" strokeWidth={2} opacity={0.95} />}
+      {isSelected && <Ring innerRadius={r + 6} outerRadius={r + 7.5} stroke="#ffffff" strokeWidth={2} opacity={0.95} />}
       {Array.from({ length: markCount }).map((_v, mi) => (
-        <Circle key={mi} x={-r + 4 + mi * 10} y={-r - 8} radius={4} fill="#22d3ee" stroke="#0a0a0a" strokeWidth={1} />
+        <Circle key={mi} x={-r + 3 + mi * 9} y={-r - 7} radius={3.5} fill="#22d3ee" stroke="#0a0a0a" strokeWidth={1} />
       ))}
-      <KonvaText text={label} x={-r - 24} y={r + 6} width={r * 2 + 48} align="center" fontSize={Math.max(10, Math.round(r * 0.5))} fill="#e5e5e5" />
     </Group>
   )
 }
@@ -120,13 +124,13 @@ export default function Vtt() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleReload = useCallback(() => {
+    if (reloadTimer.current) clearTimeout(reloadTimer.current)
+    reloadTimer.current = setTimeout(() => setReloadKey((k) => k + 1), 200)
+  }, [])
   const [preview, setPreview] = useState(false)
   const [isFull, setIsFull] = useState(false)
-  const [tokenScale, setTokenScale] = useState(() => {
-    const raw = typeof window === 'undefined' ? null : window.localStorage.getItem('vtt.tokenScale')
-    const value = raw ? Number(raw) : 1
-    return Number.isFinite(value) && value > 0 ? value : 1
-  })
   const { ref: containerRef, size } = useElementSize<HTMLDivElement>()
   // Fallback garante que o Stage nunca nasce 0x0 (evita o erro de drawImage).
   const stageW = size.width > 0 ? size.width : 1280
@@ -275,13 +279,13 @@ export default function Vtt() {
 
   useEffect(() => {
     const channel = supabase.channel('vtt-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_tokens' }, () => setReloadKey((k) => k + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_maps' }, () => setReloadKey((k) => k + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_sessions' }, () => setReloadKey((k) => k + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_effects' }, () => setReloadKey((k) => k + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_tokens' }, () => scheduleReload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_maps' }, () => scheduleReload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_sessions' }, () => scheduleReload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_effects' }, () => scheduleReload())
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [scheduleReload])
 
   function canMove(participantId: string): boolean {
     if (masterView) return true
@@ -405,7 +409,7 @@ export default function Vtt() {
     <div className={(isMestre ? 'mx-auto max-w-7xl' : 'w-full') + ' px-2 py-3 sm:px-4'}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="font-title font-bold text-xl">Mesa de combate</h1>
+          <h1 className={'font-title font-bold text-xl ' + (isFull ? 'hidden' : '')}>Mesa de combate</h1>
           <p className="font-body text-xs text-neutral-400">Rodada {battle.round_number} · Turno de {currentParticipant ? currentParticipant.name : '-'}</p>
         </div>
         <div className="flex items-center gap-3">
@@ -430,7 +434,7 @@ export default function Vtt() {
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className={'mb-3 flex flex-wrap items-center gap-2 ' + (isFull ? 'hidden' : '')}>
         {sorted.map((p, i) => (
           <span key={p.id} className={'rounded-full border px-2 py-0.5 font-body text-[11px] ' + (i === turnIndex ? 'border-amber-300 text-amber-200' : 'border-neutral-700 text-neutral-400')}>
             {i + 1}. {p.name}
@@ -457,13 +461,13 @@ export default function Vtt() {
             {mapImage
               ? <KonvaImage image={mapImage} width={stageW} height={stageH} />
               : <KonvaText text="Sem mapa - o mestre ainda nao enviou uma imagem." x={16} y={16} fill="#737373" fontSize={14} />}
-                        {tokens.map((t) => {
+                                    {tokens.map((t) => {
               const target = targets.get(t.participant_id) ?? null
               const participant = participants.find((x) => x.id === t.participant_id) ?? null
               const inst = participant && participant.enemy_instance_id ? instancesById[participant.enemy_instance_id] : null
               const tierMult = inst ? (TIER_TOKEN_MULT[inst.enemies.tier] || 1) : 1
-              const scale = masterView ? tokenScale : 1
-              const r = Math.max(12, stageW * BASE_TOKEN_RADIUS * scale * tierMult)
+              const ring = inst ? (ENEMY_RING[inst.enemies.tier] || ENEMY_RING.comum) : ALLY_RING
+              const r = Math.max(12, stageW * BASE_TOKEN_RADIUS * tierMult)
               const hpPct = target && target.hpMax > 0 ? Math.max(0, Math.min(1, target.hpCurrent / target.hpMax)) : 0
               const markCount = effects.filter((e) => e.kind === 'marca' && e.target_participant_id === t.participant_id).length
               return (
@@ -473,9 +477,9 @@ export default function Vtt() {
                   y={t.y * stageH}
                   r={r}
                   imageUrl={target ? target.portraitUrl : null}
-                  side={target ? target.side : 'inimigo'}
+                  ringColor={ring.color}
+                  glow={ring.glow}
                   hpPct={hpPct}
-                  label={t.label}
                   isCurrent={!!currentParticipant && currentParticipant.id === t.participant_id}
                   isSelected={selectedId === t.participant_id}
                   markCount={markCount}
@@ -574,17 +578,9 @@ export default function Vtt() {
         )}
       </div>
 
-      <p className="mt-3 font-body text-xs text-neutral-500">
+      <p className={'mt-3 font-body text-xs text-neutral-500 ' + (isFull ? 'hidden' : '')}>
         {canAct ? 'Clique no inimigo para atacar ou no aliado para apoiar.' : 'Aguardando o seu turno. Voce pode arrastar o seu personagem.'}
       </p>
-      {masterView && (
-        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-neutral-800 bg-neutral-950/70 p-3">
-          <span className="font-body text-xs text-neutral-400">Tamanho dos tokens</span>
-          <input type="range" min={0.6} max={1.8} step={0.05} value={tokenScale} onChange={(e) => { const v = Number(e.target.value); setTokenScale(v); window.localStorage.setItem('vtt.tokenScale', String(v)) }} className="w-48" />
-          <span className="font-body text-xs text-neutral-300">{tokenScale.toFixed(2)}x</span>
-          <span className="font-body text-[11px] text-neutral-600">Aliados iguais - comuns = aliados - elite +25% - chefe +56%</span>
-        </div>
-      )}
     </div>
   )
 }

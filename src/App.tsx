@@ -28,8 +28,8 @@ export default function App() {
     <AuthProvider>
       <SmoothScroll />
       <SiteBackground />
-      <Navbar />
-      {pathname.startsWith('/player') && (
+      {!pathname.startsWith('/player/vtt') && <Navbar />}
+      {pathname.startsWith('/player') && !pathname.startsWith('/player/vtt') && (
         <div className="fixed bottom-4 left-4 z-40">
           <VersionBadge compact />
         </div>
