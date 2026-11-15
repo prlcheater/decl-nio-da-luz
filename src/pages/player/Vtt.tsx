@@ -89,7 +89,7 @@ function VttToken({ x, y, r, imageUrl, ringColor, glow, hpPct, isCurrent, isSele
   const sq = ok ? Math.min(image.width, image.height) : 0
   return (
     <Group x={x} y={y} draggable={draggable} perfectDrawEnabled={false} onClick={onSelect} onTap={onSelect} onDragEnd={(e) => onMove(e.target.x(), e.target.y())}>
-      <Circle radius={r + 2} fill="#000000" opacity={0.55} />
+      <Circle radius={r + 2.5} fill="#000000" opacity={0.5} />
       {ok ? (
         <Group clipFunc={(ctx) => { ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.closePath() }}>
           <KonvaImage image={image} crop={{ x: (image.width - sq) / 2, y: (image.height - sq) / 2, width: sq, height: sq }} x={-r} y={-r} width={r * 2} height={r * 2} />
@@ -97,10 +97,10 @@ function VttToken({ x, y, r, imageUrl, ringColor, glow, hpPct, isCurrent, isSele
       ) : (
         <Circle radius={r} fill={ringColor} opacity={0.85} />
       )}
-      <Circle radius={r} stroke={ringColor} strokeWidth={2} shadowColor={glow} shadowBlur={10} shadowOpacity={0.9} shadowForStrokeEnabled />
-      <Ring innerRadius={r + 3} outerRadius={r + 4.5} stroke={ringColor} strokeWidth={2} rotation={-90} angle={hpPct * 360} opacity={0.9} />
-      {isCurrent && <Ring innerRadius={r + 6} outerRadius={r + 7.5} stroke="#fde047" strokeWidth={2} opacity={0.95} />}
-      {isSelected && <Ring innerRadius={r + 6} outerRadius={r + 7.5} stroke="#ffffff" strokeWidth={2} opacity={0.95} />}
+      <Circle radius={r} stroke={ringColor} strokeWidth={1.5} shadowColor={glow} shadowBlur={10} shadowOpacity={0.9} shadowForStrokeEnabled />
+      <Ring innerRadius={r + 0.75} outerRadius={r + 2.25} stroke={ringColor} strokeWidth={1.5} rotation={-90} angle={hpPct * 360} opacity={0.9} />
+      {isCurrent && <Ring innerRadius={r + 3.5} outerRadius={r + 5} stroke="#fde047" strokeWidth={1.5} opacity={0.95} />}
+      {isSelected && <Ring innerRadius={r + 3.5} outerRadius={r + 5} stroke="#ffffff" strokeWidth={1.5} opacity={0.95} />}
       {Array.from({ length: markCount }).map((_v, mi) => (
         <Circle key={mi} x={-r + 3 + mi * 9} y={-r - 7} radius={3.5} fill="#22d3ee" stroke="#0a0a0a" strokeWidth={1} />
       ))}
@@ -406,7 +406,7 @@ export default function Vtt() {
   if (isMestre && !map) {
     return <VttSetup mode="map" battleId={battle.id} onDone={onDone} />
   }  return (
-    <div className={(isMestre ? 'mx-auto max-w-7xl' : 'w-full') + ' px-2 py-3 sm:px-4'}>
+    <div className={((!masterView || isFull) ? 'w-full' : 'mx-auto max-w-7xl') + ' flex min-h-screen flex-col justify-center' + (isFull ? ' p-1' : ' px-2 py-3 sm:px-4')}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className={'font-title font-bold text-xl ' + (isFull ? 'hidden' : '')}>Mesa de combate</h1>
