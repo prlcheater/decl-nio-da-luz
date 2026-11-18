@@ -7,6 +7,7 @@ import SiteBackground from '@/components/SiteBackground'
 import SmoothScroll from '@/components/SmoothScroll'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import { DiceFeedHost } from '@/components/DiceOverlay'
 // Home fica no bundle inicial (primeira dobra); o resto entra por rota.
 import Home from '@/pages/Home'
 
@@ -28,6 +29,7 @@ export default function App() {
     <AuthProvider>
       <SmoothScroll />
       <SiteBackground />
+      <DiceFeedHost />
       {!pathname.startsWith('/player/vtt') && <Navbar />}
       {pathname.startsWith('/player') && !pathname.startsWith('/player/vtt') && (
         <div className="fixed bottom-4 left-4 z-40">

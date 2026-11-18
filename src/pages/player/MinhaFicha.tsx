@@ -27,6 +27,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
+import { publishRoll } from '@/lib/diceFeed'
 import { supabase } from '@/lib/supabase'
 import Reveal from '@/components/Reveal'
 import GlowCard from '@/components/GlowCard'
@@ -674,6 +675,7 @@ function RollResultRow({ label, result }: { label: string; result: TestResult | 
 
 function RollPanel({ character }: { character: CharacterRow }) {
   const [difficulty, setDifficulty] = useState<DifficultyId>('regular')
+  const { profile, session } = useAuth()
   const [freeText, setFreeText] = useState('')
   const [freeError, setFreeError] = useState<string | null>(null)
   const [history, setHistory] = useState<{ label: string; result: TestResult | FreeRollResult }[]>([])
@@ -681,6 +683,22 @@ function RollPanel({ character }: { character: CharacterRow }) {
   function rollTrait(trait: (typeof TRAITS_META)[number]) {
     const result = resolveTest({ status: character[trait.key], difficulty })
     setHistory((prev) => [{ label: trait.label, result }, ...prev].slice(0, 3))
+    if (session) {
+      void publishRoll({
+        user_id: session.user.id,
+        username: profile ? profile.username : character.name,
+        character_id: character.id,
+        kind: 'teste',
+        label: trait.label,
+        difficulty,
+        rolls: result.rolls,
+        kept: result.kept,
+        modifier: result.modifier,
+        total: result.total,
+        critico: result.critico,
+        falha_critica: result.falhaCritica,
+      })
+    }
   }
 
   function rollFree() {
@@ -691,6 +709,22 @@ function RollPanel({ character }: { character: CharacterRow }) {
     }
     setFreeError(null)
     setHistory((prev) => [{ label: freeText, result }, ...prev].slice(0, 3))
+    if (session) {
+      void publishRoll({
+        user_id: session.user.id,
+        username: profile ? profile.username : character.name,
+        character_id: character.id,
+        kind: 'livre',
+        label: freeText,
+        difficulty: null,
+        rolls: result.rolls,
+        kept: null,
+        modifier: result.modifier,
+        total: result.total,
+        critico: false,
+        falha_critica: false,
+      })
+    }
     setFreeText('')
   }
 
