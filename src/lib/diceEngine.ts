@@ -3,11 +3,11 @@
 
 export type DifficultyId = 'favoravel' | 'regular' | 'dificil' | 'severa'
 
-export const DIFFICULTIES: { id: DifficultyId; label: string; poolDelta: number; modifier: number }[] = [
-  { id: 'favoravel', label: 'Favorável', poolDelta: 1, modifier: 0 },
-  { id: 'regular', label: 'Regular', poolDelta: 0, modifier: 0 },
-  { id: 'dificil', label: 'Difícil', poolDelta: -1, modifier: -4 },
-  { id: 'severa', label: 'Severa', poolDelta: -2, modifier: -8 },
+export const DIFFICULTIES: { id: DifficultyId; label: string; modifier: number }[] = [
+  { id: 'favoravel', label: 'Favorável', modifier: 2 },
+  { id: 'regular', label: 'Regular', modifier: 0 },
+  { id: 'dificil', label: 'Difícil', modifier: -4 },
+  { id: 'severa', label: 'Severa', modifier: -8 },
 ]
 
 // Fonte de aleatoriedade trocável (RNG injetável). Por padrão usa Math.random;
@@ -57,10 +57,10 @@ export type TestResult = {
   falhaCritica: boolean
 }
 
-// Teste de status: NdX kh1 + modificador, com dificuldade aplicada ao pool e a um modificador fixo.
+// Teste de status: Nd20 kh1 + traco + modificador da dificuldade (Favoravel +2, Regular 0, Dificil -4, Severa -8).
 export function resolveTest({ status, difficulty }: { status: number; difficulty: DifficultyId }): TestResult {
   const diff = DIFFICULTIES.find((d) => d.id === difficulty) ?? DIFFICULTIES[1]
-  const pool = Math.max(1, poolSizeForStatus(status) + diff.poolDelta)
+  const pool = poolSizeForStatus(status)
   const rolls = rollPool(pool, 20)
   const kept = Math.max(...rolls)
   const modifier = status + diff.modifier

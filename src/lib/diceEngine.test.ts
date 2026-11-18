@@ -74,10 +74,13 @@ describe('resolveTest', () => {
     expect(r.critico).toBe(true)
   })
 
-  it('dificuldade severa reduz o pool e o modificador', () => {
-    const r = resolveTest({ status: 8, difficulty: 'severa' })
-    expect(r.rolls).toHaveLength(1)
-    expect(r.modifier).toBe(0)
+  it('a dificuldade altera so o modificador (Favoravel +2, Dificil -4, Severa -8)', () => {
+    expect(resolveTest({ status: 8, difficulty: 'favoravel' }).modifier).toBe(10)
+    expect(resolveTest({ status: 8, difficulty: 'regular' }).modifier).toBe(8)
+    expect(resolveTest({ status: 8, difficulty: 'dificil' }).modifier).toBe(4)
+    const severa = resolveTest({ status: 8, difficulty: 'severa' })
+    expect(severa.modifier).toBe(0)
+    expect(severa.rolls).toHaveLength(3)
   })
 
   it('resultado 1 marca falha crítica; nunca fica abaixo de 1 dado', () => {
