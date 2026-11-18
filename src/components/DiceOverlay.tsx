@@ -52,8 +52,8 @@ export function DiceFeedHost() {
         </div>
         <div className="mt-2 flex items-center gap-3">
           <TextType text={[roll.label]} typingSpeed={22} showCursor={false} loop={false} className="font-body text-sm uppercase tracking-wide text-neutral-300" />
-          {roll.critico && <span className="rounded border border-amber-400/70 px-1.5 py-0.5 font-body text-[11px] text-amber-300">Sucesso Crítico!</span>}
-          {roll.falha_critica && <span className="rounded border border-red-500/70 px-1.5 py-0.5 font-body text-[11px] text-red-300">Falha Crítica!</span>}
+          {roll.critico && <span className="rounded border border-amber-400/70 px-1.5 py-0.5 font-body text-[12px] text-amber-300">Sucesso Crítico!</span>}
+          {roll.falha_critica && <span className="rounded border border-red-500/70 px-1.5 py-0.5 font-body text-[12px] text-red-300">Falha Crítica!</span>}
         </div>
         {roll.rolls.length > 0 && (
           <p className="mt-2 font-body text-xs text-neutral-400">

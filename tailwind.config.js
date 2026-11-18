@@ -13,8 +13,8 @@ export default {
       // Escala tipográfica padrão do Tailwind, com +2px em cada degrau para
       // melhorar legibilidade/acessibilidade em todo o site.
       fontSize: {
-        xs: ['0.875rem', { lineHeight: '1rem' }],
-        sm: ['1rem', { lineHeight: '1.25rem' }],
+        xs: ['0.9375rem', { lineHeight: '1.125rem' }],
+        sm: ['1.0625rem', { lineHeight: '1.375rem' }],
         base: ['1.125rem', { lineHeight: '1.5rem' }],
         lg: ['1.25rem', { lineHeight: '1.75rem' }],
         xl: ['1.375rem', { lineHeight: '1.75rem' }],

@@ -82,7 +82,7 @@ function Elementos() {
             <p className="font-body text-xs text-neutral-500 italic">{el.epithet}</p>
             <p className="mt-2 font-body text-xs text-neutral-500 leading-relaxed">{el.desc}</p>
             {el.restricted && (
-              <p className="mt-2 font-body text-[10px] uppercase tracking-wider text-neutral-400">
+              <p className="mt-2 font-body text-[12px] uppercase tracking-wider text-neutral-400">
                 Elemento restrito
               </p>
             )}

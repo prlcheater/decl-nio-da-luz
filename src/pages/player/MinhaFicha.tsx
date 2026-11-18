@@ -138,7 +138,7 @@ function CategoryTag({ id, label, color }: { id: string; label: string; color: s
   return (
     <span
       key={id}
-      className="inline-flex items-center rounded-full border px-2 py-0.5 font-body text-[10px] uppercase tracking-wide"
+      className="inline-flex items-center rounded-full border px-2 py-0.5 font-body text-[12px] uppercase tracking-wide"
       style={{ borderColor: color, color }}
     >
       {label}
@@ -406,7 +406,7 @@ export default function MinhaFicha() {
               </button>
             )}
             {showNoBattleHint && (
-              <div className="absolute right-0 top-full z-20 mt-2 w-48 rounded border border-neutral-800 bg-neutral-950 px-3 py-2 font-body text-[11px] text-neutral-300 shadow-lg">
+              <div className="absolute right-0 top-full z-20 mt-2 w-48 rounded border border-neutral-800 bg-neutral-950 px-3 py-2 font-body text-[12px] text-neutral-300 shadow-lg">
                 Nenhum combate acontecendo no momento.
               </div>
             )}
@@ -559,7 +559,7 @@ export default function MinhaFicha() {
                 {canEdit && (
                   <button
                     onClick={() => removeSkill(s.skill_id)}
-                    className="mt-3 flex items-center gap-1 font-body text-[11px] text-neutral-600 transition-colors duration-300 hover:text-red-400"
+                    className="mt-3 flex items-center gap-1 font-body text-[12px] text-neutral-600 transition-colors duration-300 hover:text-red-400"
                   >
                     <Trash2 size={11} strokeWidth={1.75} /> Remover
                   </button>
@@ -713,7 +713,7 @@ function AbilityCard({
 
       {canAct && usableOutsideCombat && (
         <div className="mt-3 border-t border-neutral-800 pt-3">
-          <label className="flex items-center gap-1.5 font-body text-[11px] text-neutral-500">
+          <label className="flex items-center gap-1.5 font-body text-[12px] text-neutral-500">
             <input type="checkbox" checked={pontoVital} onChange={(e) => setPontoVital(e.target.checked)} />
             Ponto vital identificado?
           </label>
@@ -725,25 +725,25 @@ function AbilityCard({
             >
               Usar ({cost} PE)
             </button>
-            {insufficientEnergy && <span className="font-body text-[11px] text-red-400">Energia insuficiente</span>}
+            {insufficientEnergy && <span className="font-body text-[12px] text-red-400">Energia insuficiente</span>}
           </div>
           {result && (
             <div className="mt-3 rounded border border-neutral-800 bg-neutral-950/60 p-3">
               <div className="flex items-center gap-2">
                 <p className="font-title text-lg font-bold text-neutral-100">{result.danoFinal}</p>
-                <span className="font-body text-[11px] uppercase tracking-wide text-neutral-500">{efeitoMeta.label}</span>
+                <span className="font-body text-[12px] uppercase tracking-wide text-neutral-500">{efeitoMeta.label}</span>
                 {result.critico && <CategoryTag id="crit" label="Crítico!" color="#eab308" />}
               </div>
               {tipoEfeito !== 'dano' ? (
                 <button
                   onClick={apply}
                   disabled={applied}
-                  className="mt-2 font-body text-[11px] text-neutral-400 transition-colors duration-300 hover:text-white disabled:opacity-40"
+                  className="mt-2 font-body text-[12px] text-neutral-400 transition-colors duration-300 hover:text-white disabled:opacity-40"
                 >
                   {applied ? 'Aplicado em mim' : 'Aplicar em mim'}
                 </button>
               ) : (
-                <p className="mt-1 font-body text-[11px] text-neutral-600">Aplique manualmente no alvo.</p>
+                <p className="mt-1 font-body text-[12px] text-neutral-600">Aplique manualmente no alvo.</p>
               )}
             </div>
           )}
@@ -753,7 +753,7 @@ function AbilityCard({
       {canEdit && (
         <button
           onClick={onRemove}
-          className="mt-3 flex items-center gap-1 font-body text-[11px] text-neutral-600 transition-colors duration-300 hover:text-red-400"
+          className="mt-3 flex items-center gap-1 font-body text-[12px] text-neutral-600 transition-colors duration-300 hover:text-red-400"
         >
           <Trash2 size={11} strokeWidth={1.75} /> Remover
         </button>
@@ -939,8 +939,8 @@ function EquipmentSlotCard({
           <p className="mt-1.5 font-title font-semibold text-neutral-100">{item.name}</p>
           {canEdit && (
             <div className="mt-2 flex justify-center gap-3">
-              <button onClick={() => setEditing(true)} className="font-body text-[11px] text-neutral-500 hover:text-white">Trocar</button>
-              <button onClick={onRemove} className="font-body text-[11px] text-neutral-500 hover:text-red-400">Remover</button>
+              <button onClick={() => setEditing(true)} className="font-body text-[12px] text-neutral-500 hover:text-white">Trocar</button>
+              <button onClick={onRemove} className="font-body text-[12px] text-neutral-500 hover:text-red-400">Remover</button>
             </div>
           )}
         </div>

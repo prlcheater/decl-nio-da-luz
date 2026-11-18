@@ -24,8 +24,8 @@ function Avatar({ url, name }: { url: string | null; name: string }) {
   return (
     <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-neutral-700 bg-neutral-900">
       {url
-        ? <img src={url} alt="" className="h-full w-full object-cover" />
-        : <span className="flex h-full w-full items-center justify-center text-[11px] text-neutral-400">{name.slice(0, 2).toUpperCase()}</span>}
+        ? <img src={url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+        : <span className="flex h-full w-full items-center justify-center text-[12px] text-neutral-400">{name.slice(0, 2).toUpperCase()}</span>}
     </div>
   )
 }
@@ -111,8 +111,8 @@ export default function CentralDados() {
               <Avatar url={ch ? ch.portrait_url : null} name={r.username} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-body text-sm text-neutral-200">{r.character_name ?? r.username}</p>
-                <p className="truncate font-body text-[11px] text-neutral-500">{r.label}{diff ? ' · ' + diff.label : ''} · {r.kind === 'teste' ? 'teste' : 'livre'} · {r.source === 'enemy' ? 'inimigo' : r.source === 'npc' ? 'NPC' : 'jogador'} · {timeAgo(r.created_at)}</p>
-                {r.rolls.length > 0 && <p className="truncate font-body text-[11px] text-neutral-600">[{r.rolls.join(', ')}]{r.modifier !== 0 ? ' · mod ' + (r.modifier > 0 ? '+' : '') + r.modifier : ''}</p>}
+                <p className="truncate font-body text-[12px] text-neutral-500">{r.label}{diff ? ' · ' + diff.label : ''} · {r.kind === 'teste' ? 'teste' : 'livre'} · {r.source === 'enemy' ? 'inimigo' : r.source === 'npc' ? 'NPC' : 'jogador'} · {timeAgo(r.created_at)}</p>
+                {r.rolls.length > 0 && <p className="truncate font-body text-[12px] text-neutral-600">[{r.rolls.join(', ')}]{r.modifier !== 0 ? ' · mod ' + (r.modifier > 0 ? '+' : '') + r.modifier : ''}</p>}
               </div>
               <p className={'font-title text-xl font-bold ' + color}>{r.total}</p>
             </GlowCard>

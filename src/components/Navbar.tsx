@@ -67,7 +67,7 @@ export default function Navbar() {
           colors={GRADIENT_COLORS}
           animationSpeed={6}
           showBorder={false}
-          className="hidden sm:inline-flex font-body text-[10px] font-semibold uppercase tracking-wider"
+          className="hidden sm:inline-flex font-body text-[12px] font-semibold uppercase tracking-wider"
         >
           Segunda Temporada
         </GradientText>

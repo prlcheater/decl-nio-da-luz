@@ -11,7 +11,7 @@ function AbilityRowButton({ ability, cost, busy, onUse }: { ability: AbilityRow;
         <span>{ability.abilities.name}</span>
         <span className="text-xs text-neutral-500">{cost} PE</span>
       </button>
-      <label title="Ponto vital" className="flex items-center gap-1 font-body text-[11px] text-neutral-500">
+      <label title="Ponto vital" className="flex items-center gap-1 font-body text-[12px] text-neutral-500">
         <input type="checkbox" checked={pv} onChange={(e) => setPv(e.target.checked)} /> PV
       </label>
     </div>

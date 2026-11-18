@@ -16,7 +16,7 @@ type Traits = Record<(typeof TRAITS_META)[number]['key'], number>
 type HistoryItem = { label: string; result: TestResult | FreeRollResult }
 
 function ResultTag({ label, color }: { label: string; color: string }) {
-  return <span className="shrink-0 rounded border px-1.5 py-0.5 font-body text-[11px]" style={{ borderColor: color, color }}>{label}</span>
+  return <span className="shrink-0 rounded border px-1.5 py-0.5 font-body text-[12px]" style={{ borderColor: color, color }}>{label}</span>
 }
 
 function ResultRow({ label, result }: { label: string; result: TestResult | FreeRollResult }) {

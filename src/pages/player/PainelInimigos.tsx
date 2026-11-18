@@ -184,7 +184,7 @@ function InstanceCard({
           <p className="font-body text-xs text-neutral-500">{enemy.name} · {ENEMY_TIER_CONFIG[enemy.tier].label} · Nv. {enemy.level}</p>
         </div>
         {instance.status === 'defeated' && (
-          <span className="flex items-center gap-1 font-body text-[10px] uppercase tracking-wide text-neutral-600">
+          <span className="flex items-center gap-1 font-body text-[12px] uppercase tracking-wide text-neutral-600">
             <Skull size={12} strokeWidth={1.75} /> Derrotado
           </span>
         )}
@@ -208,10 +208,10 @@ function InstanceCard({
         <button onClick={applyDamage} className="rounded border border-neutral-700 px-3 py-1.5 font-body text-xs text-neutral-300 hover:text-white">
           Aplicar
         </button>
-        <button onClick={onToggleDefeated} className="font-body text-[11px] text-neutral-500 hover:text-white">
+        <button onClick={onToggleDefeated} className="font-body text-[12px] text-neutral-500 hover:text-white">
           {instance.status === 'defeated' ? 'Reativar' : 'Marcar derrotado'}
         </button>
-        <button onClick={onRemove} className="ml-auto flex items-center gap-1 font-body text-[11px] text-neutral-600 hover:text-red-400">
+        <button onClick={onRemove} className="ml-auto flex items-center gap-1 font-body text-[12px] text-neutral-600 hover:text-red-400">
           <Trash2 size={11} strokeWidth={1.75} /> Remover
         </button>
       </div>

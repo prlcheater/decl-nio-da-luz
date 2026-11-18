@@ -73,7 +73,7 @@ type AbilityRow = {
 function Badge({ label, color }: { label: string; color: string }) {
   return (
     <span
-      className="inline-flex items-center rounded-full border px-2 py-0.5 font-body text-[10px] uppercase tracking-wide"
+      className="inline-flex items-center rounded-full border px-2 py-0.5 font-body text-[12px] uppercase tracking-wide"
       style={{ borderColor: color, color }}
     >
       {label}
@@ -288,7 +288,7 @@ export default function FichaInimigo() {
 
               <div className="mt-4 flex flex-wrap items-center gap-4">
                 <div>
-                  <label className="mb-1 block font-body text-[11px] uppercase tracking-wide text-neutral-600">Tier</label>
+                  <label className="mb-1 block font-body text-[12px] uppercase tracking-wide text-neutral-600">Tier</label>
                   <select
                     value={enemy.tier}
                     onChange={(e) => persist({ tier: e.target.value as EnemyTier })}
@@ -300,7 +300,7 @@ export default function FichaInimigo() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block font-body text-[11px] uppercase tracking-wide text-neutral-600">Elemento</label>
+                  <label className="mb-1 block font-body text-[12px] uppercase tracking-wide text-neutral-600">Elemento</label>
                   <select
                     value={enemy.element_id ?? ''}
                     onChange={(e) => persist({ element_id: e.target.value || null })}
@@ -313,7 +313,7 @@ export default function FichaInimigo() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block font-body text-[11px] uppercase tracking-wide text-neutral-600">Nível</label>
+                  <label className="mb-1 block font-body text-[12px] uppercase tracking-wide text-neutral-600">Nível</label>
                   <div className="flex items-center gap-1.5">
                     <p className="font-title font-bold text-lg text-neutral-100">{enemy.level}</p>
                     <div className="flex flex-col">
@@ -369,7 +369,7 @@ export default function FichaInimigo() {
                   </button>
                 </div>
               </div>
-              <p className="font-body text-[11px] uppercase tracking-wide text-neutral-500">{trait.label}</p>
+              <p className="font-body text-[12px] uppercase tracking-wide text-neutral-500">{trait.label}</p>
             </GlowCard>
           ))}
         </div>
@@ -404,7 +404,7 @@ export default function FichaInimigo() {
                 )}
                 <button
                   onClick={() => removeAbility(a.ability_id)}
-                  className="mt-3 flex items-center gap-1 font-body text-[11px] text-neutral-600 transition-colors duration-300 hover:text-red-400"
+                  className="mt-3 flex items-center gap-1 font-body text-[12px] text-neutral-600 transition-colors duration-300 hover:text-red-400"
                 >
                   <Trash2 size={11} strokeWidth={1.75} /> Remover
                 </button>

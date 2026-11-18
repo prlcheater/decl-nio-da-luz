@@ -29,14 +29,17 @@ function vidaMult(tier: string): number {
 
 type DmgToast = { id: string; targetId: string; amount: number; color: string; label: string }
 
+const imageCache = new Map<string, HTMLImageElement>()
+
 function useLoadedImage(url: string | null) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null)
+  const [image, setImage] = useState<HTMLImageElement | null>(() => (url ? imageCache.get(url) ?? null : null))
   useEffect(() => {
     if (!url) { setImage(null); return }
+    const cached = imageCache.get(url)
+    if (cached) { setImage(cached); return }
     const img = new window.Image()
-    // sem crossOrigin: a imagem publica carrega mesmo sem cabecalho CORS
     img.src = url
-    img.onload = () => setImage(img)
+    img.onload = () => { imageCache.set(url, img); setImage(img) }
     img.onerror = () => setImage(null)
     return () => { img.onload = null; img.onerror = null }
   }, [url])
@@ -65,8 +68,8 @@ function useElementSize<T extends HTMLElement>() {
 
 function HudPortrait({ url, name }: { url: string | null; name: string }) {
   return url
-    ? <img src={url} alt="" className="h-full w-full object-cover" />
-    : <span className="flex h-full w-full items-center justify-center text-[10px] text-neutral-400">{name.slice(0, 2).toUpperCase()}</span>
+    ? <img src={url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+    : <span className="flex h-full w-full items-center justify-center text-[12px] text-neutral-400">{name.slice(0, 2).toUpperCase()}</span>
 }
 
 function VttToken({ x, y, r, imageUrl, ringColor, glow, hpPct, isCurrent, isSelected, markCount, draggable, onSelect, onMove }: {
@@ -436,7 +439,7 @@ export default function Vtt() {
 
       <div className={'mb-3 flex flex-wrap items-center gap-2 ' + (isFull ? 'hidden' : '')}>
         {sorted.map((p, i) => (
-          <span key={p.id} className={'rounded-full border px-2 py-0.5 font-body text-[11px] ' + (i === turnIndex ? 'border-amber-300 text-amber-200' : 'border-neutral-700 text-neutral-400')}>
+          <span key={p.id} className={'rounded-full border px-2 py-0.5 font-body text-[12px] ' + (i === turnIndex ? 'border-amber-300 text-amber-200' : 'border-neutral-700 text-neutral-400')}>
             {i + 1}. {p.name}
           </span>
         ))}
@@ -444,9 +447,9 @@ export default function Vtt() {
 
       {canAct && currentParticipant && (
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="font-body text-[11px] text-neutral-500">Testar traço:</span>
+          <span className="font-body text-[12px] text-neutral-500">Testar traço:</span>
           {(['attack', 'resistance', 'agility', 'intellect', 'charisma'] as const).map((k) => (
-            <button key={k} onClick={() => rollTrait(TRAIT_LABEL[k], actorTrait(k))} className="rounded border border-neutral-700 px-2 py-0.5 font-body text-[11px] text-neutral-300 hover:border-neutral-500">
+            <button key={k} onClick={() => rollTrait(TRAIT_LABEL[k], actorTrait(k))} className="rounded border border-neutral-700 px-2 py-0.5 font-body text-[12px] text-neutral-300 hover:border-neutral-500">
               {TRAIT_LABEL[k]}
             </button>
           ))}
@@ -528,7 +531,7 @@ export default function Vtt() {
                   <HudPortrait url={t ? t.portraitUrl : null} name={p.name} />
                 </div>
                 <div className="min-w-[70px] text-right">
-                  <p className="font-body text-[11px] text-neutral-200">{p.name}</p>
+                  <p className="font-body text-[12px] text-neutral-200">{p.name}</p>
                   <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-neutral-800">
                     <div className="h-full bg-red-500" style={{ width: String(t && t.hpMax > 0 ? (t.hpCurrent / t.hpMax) * 100 : 0) + '%' }} />
                   </div>
@@ -547,7 +550,7 @@ export default function Vtt() {
                   <HudPortrait url={t ? t.portraitUrl : null} name={p.name} />
                 </div>
                 <div className="min-w-[74px]">
-                  <p className="font-body text-[11px] text-neutral-200">{p.name}</p>
+                  <p className="font-body text-[12px] text-neutral-200">{p.name}</p>
                   <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-neutral-800">
                     <div className="h-full bg-emerald-400" style={{ width: String(t && t.hpMax > 0 ? (t.hpCurrent / t.hpMax) * 100 : 0) + '%' }} />
                   </div>
