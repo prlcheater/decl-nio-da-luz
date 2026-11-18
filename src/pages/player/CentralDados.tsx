@@ -35,6 +35,7 @@ export default function CentralDados() {
   const [rolls, setRolls] = useState<RollRecord[]>([])
   const [characters, setCharacters] = useState<Record<string, CharacterMini>>({})
   const [filter, setFilter] = useState('todos')
+  const [source, setSource] = useState<'todos' | 'player' | 'npc' | 'enemy'>('todos')
   const [busy, setBusy] = useState(false)
 
   async function load() {
@@ -63,8 +64,8 @@ export default function CentralDados() {
     return () => { supabase.removeChannel(channel) }
   }, [isMestre])
 
-  const players = useMemo(() => [...new Set(rolls.map((r) => r.username))].sort(), [rolls])
-  const shown = filter === 'todos' ? rolls : rolls.filter((r) => r.username === filter)
+  const names = useMemo(() => [...new Set(rolls.map((r) => r.character_name ?? r.username))].sort(), [rolls])
+  const shown = rolls.filter((r) => (source === 'todos' || r.source === source) && (filter === 'todos' || (r.character_name ?? r.username) === filter))
 
   if (loading) return null
   if (!isMestre) return <Navigate to="/player" replace />
@@ -84,9 +85,15 @@ export default function CentralDados() {
           <p className="mt-1 font-body text-sm text-neutral-400">Rolagens dos últimos 2 dias, ao vivo.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1.5 font-body text-xs text-neutral-200">
-            <option value="todos">Todos os jogadores</option>
-            {players.map((p) => <option key={p} value={p}>{p}</option>)}
+          <select value={source} onChange={(e) => setSource(e.target.value as 'todos' | 'player' | 'npc' | 'enemy')} className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1.5 font-body text-sm text-neutral-200">
+            <option value="todos">Todas as origens</option>
+            <option value="player">Jogadores</option>
+            <option value="npc">NPCs</option>
+            <option value="enemy">Inimigos</option>
+          </select>
+          <select value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1.5 font-body text-sm text-neutral-200">
+            <option value="todos">Todas as fichas</option>
+            {names.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
           <button onClick={() => void load()} className="flex items-center gap-1 rounded border border-neutral-700 px-2 py-1.5 font-body text-xs text-neutral-300 hover:text-white"><RefreshCw size={13} /> Atualizar</button>
           <button onClick={() => void limpar()} disabled={busy} className="flex items-center gap-1 rounded border border-red-500/50 px-2 py-1.5 font-body text-xs text-red-300 hover:text-white disabled:opacity-50"><Trash2 size={13} /> Limpar antigas</button>
@@ -103,8 +110,8 @@ export default function CentralDados() {
             <GlowCard key={r.id} contentClassName="flex items-center gap-3 p-3">
               <Avatar url={ch ? ch.portrait_url : null} name={r.username} />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-body text-sm text-neutral-200">{r.username}</p>
-                <p className="truncate font-body text-[11px] text-neutral-500">{r.label}{diff ? ' · ' + diff.label : ''} · {r.kind === 'teste' ? 'teste' : 'livre'} · {timeAgo(r.created_at)}</p>
+                <p className="truncate font-body text-sm text-neutral-200">{r.character_name ?? r.username}</p>
+                <p className="truncate font-body text-[11px] text-neutral-500">{r.label}{diff ? ' · ' + diff.label : ''} · {r.kind === 'teste' ? 'teste' : 'livre'} · {r.source === 'enemy' ? 'inimigo' : r.source === 'npc' ? 'NPC' : 'jogador'} · {timeAgo(r.created_at)}</p>
                 {r.rolls.length > 0 && <p className="truncate font-body text-[11px] text-neutral-600">[{r.rolls.join(', ')}]{r.modifier !== 0 ? ' · mod ' + (r.modifier > 0 ? '+' : '') + r.modifier : ''}</p>}
               </div>
               <p className={'font-title text-xl font-bold ' + color}>{r.total}</p>

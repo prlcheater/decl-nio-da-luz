@@ -26,29 +26,22 @@ import {
   KeyRound,
   LogOut,
 } from 'lucide-react'
-import { useAuth } from '@/lib/AuthContext'
-import { publishRoll } from '@/lib/diceFeed'
+import { useAuth } from '@/lib/AuthContext'
 import { supabase } from '@/lib/supabase'
 import Reveal from '@/components/Reveal'
 import GlowCard from '@/components/GlowCard'
+import DadosPanel from '@/components/DadosPanel'
 import ImageCropModal from '@/components/ImageCropModal'
 import { ELEMENTS, CLASSES, GRADIENT_COLORS } from '@/lib/gameData'
-import {
-  DIFFICULTIES,
-  FREE_ROLL_MAX_DICE,
+import {
   MAX_LEVEL,
   calculateEpMax,
   calculateHpMax,
   calculateDamage,
-  energyCost,
-  resolveTest,
-  rollFreeText,
+  energyCost,
   statPointsAvailable,
   type AbilityTier,
-  type DamageResult,
-  type DifficultyId,
-  type FreeRollResult,
-  type TestResult,
+  type DamageResult,
   type TipoEfeito,
 } from '@/lib/diceEngine'
 
@@ -550,7 +543,7 @@ export default function MinhaFicha() {
         {activeTab === 'dados' && (
           <div className="mt-4 flex flex-col gap-8">
             {canAct ? (
-              <RollPanel character={character} />
+              <DadosPanel traits={character} actorName={character.name} source={character.user_id ? 'player' : 'npc'} characterId={character.id} />
             ) : (
               <p className="font-body text-sm text-neutral-600">Você não tem permissão pra rolar dados nessa ficha.</p>
             )}
@@ -646,143 +639,6 @@ function CurrencyEditor({
       </div> : canEdit ? <button onClick={() => { setDraft(String(value)); setEditing(true) }} aria-label={"Editar " + label} className="mt-1 flex w-full min-w-0 items-center justify-between gap-2 text-left">
         <span className="break-all font-title text-lg tabular-nums">{value.toLocaleString("pt-BR")}</span><Pencil size={16} className="shrink-0 text-neutral-400" />
       </button> : <p className="mt-1 break-all font-title text-lg tabular-nums">{value.toLocaleString("pt-BR")}</p>}
-    </div>
-  )
-}
-
-function RollResultRow({ label, result }: { label: string; result: TestResult | FreeRollResult }) {
-  const isTest = 'critico' in result
-  const test = isTest ? (result as TestResult) : null
-  const free = !isTest ? (result as FreeRollResult) : null
-
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-neutral-800 bg-neutral-950/60 px-3 py-2">
-      <div>
-        <p className="font-body text-xs text-neutral-400">{label}</p>
-        <p className="font-body text-[11px] text-neutral-600">
-          [{result.rolls.join(', ')}] {test ? `mantém ${test.kept}` : `soma ${free!.sum}`}
-          {result.modifier !== 0 && ` ${result.modifier > 0 ? '+' : ''}${result.modifier}`}
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        <p className="font-title text-lg font-bold text-neutral-100">{result.total}</p>
-        {test?.critico && <CategoryTag id="crit" label="Sucesso Crítico!" color="#eab308" />}
-        {test?.falhaCritica && <CategoryTag id="fail" label="Falha Crítica!" color="#dc2626" />}
-      </div>
-    </div>
-  )
-}
-
-function RollPanel({ character }: { character: CharacterRow }) {
-  const [difficulty, setDifficulty] = useState<DifficultyId>('regular')
-  const { profile, session } = useAuth()
-  const [freeText, setFreeText] = useState('')
-  const [freeError, setFreeError] = useState<string | null>(null)
-  const [history, setHistory] = useState<{ label: string; result: TestResult | FreeRollResult }[]>([])
-
-  function rollTrait(trait: (typeof TRAITS_META)[number]) {
-    const result = resolveTest({ status: character[trait.key], difficulty })
-    setHistory((prev) => [{ label: trait.label, result }, ...prev].slice(0, 3))
-    if (session) {
-      void publishRoll({
-        user_id: session.user.id,
-        username: profile ? profile.username : character.name,
-        character_id: character.id,
-        kind: 'teste',
-        label: trait.label,
-        difficulty,
-        rolls: result.rolls,
-        kept: result.kept,
-        modifier: result.modifier,
-        total: result.total,
-        critico: result.critico,
-        falha_critica: result.falhaCritica,
-      })
-    }
-  }
-
-  function rollFree() {
-    const result = rollFreeText(freeText)
-    if (!result) {
-      setFreeError(`Notação inválida ou acima do limite (até ${FREE_ROLL_MAX_DICE} dados).`)
-      return
-    }
-    setFreeError(null)
-    setHistory((prev) => [{ label: freeText, result }, ...prev].slice(0, 3))
-    if (session) {
-      void publishRoll({
-        user_id: session.user.id,
-        username: profile ? profile.username : character.name,
-        character_id: character.id,
-        kind: 'livre',
-        label: freeText,
-        difficulty: null,
-        rolls: result.rolls,
-        kept: null,
-        modifier: result.modifier,
-        total: result.total,
-        critico: false,
-        falha_critica: false,
-      })
-    }
-    setFreeText('')
-  }
-
-  return (
-    <div>
-      <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="font-title font-semibold text-neutral-100">Teste de Status</h3>
-        <div className="grid w-full grid-cols-2 gap-1 rounded-xl border border-neutral-800 bg-neutral-900/60 p-1 sm:w-auto sm:grid-cols-4">
-          {DIFFICULTIES.map((d) => (
-            <button
-              key={d.id}
-              onClick={() => setDifficulty(d.id)}
-              className={`rounded-full px-3 py-1 font-body text-xs font-semibold transition-colors duration-300 ${
-                difficulty === d.id ? 'bg-white text-neutral-950' : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {TRAITS_META.map((trait) => (
-          <button key={trait.key} type="button" onClick={() => rollTrait(trait)} className="w-full text-left">
-            <GlowCard contentClassName="flex flex-col items-center gap-1.5 p-4">
-              <trait.icon size={18} strokeWidth={1.5} className="text-neutral-400" />
-              <span className="font-body text-xs text-neutral-400">{trait.label}</span>
-            </GlowCard>
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        <input
-          value={freeText}
-          onChange={(e) => setFreeText(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && rollFree()}
-          placeholder="Rolagem livre: 2d20kh1+3"
-          className={inputClass}
-        />
-        <button onClick={rollFree} className="rounded bg-white px-4 py-2 font-body text-xs font-semibold text-neutral-950 sm:shrink-0">
-          Rolar
-        </button>
-      </div>
-
-      {freeError && (
-        <p role="alert" className="mt-2 font-body text-xs text-red-300">{freeError}</p>
-      )}
-
-      {history.length > 0 && (
-        <div className="mt-4 flex flex-col gap-2">
-          <p className="font-body text-xs uppercase tracking-wide text-neutral-500">Histórico</p>
-          {history.map((h, i) => (
-            <RollResultRow key={i} label={h.label} result={h.result} />
-          ))}
-        </div>
-      )}
     </div>
   )
 }

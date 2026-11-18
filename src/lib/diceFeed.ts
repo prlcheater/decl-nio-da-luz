@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import type { DifficultyId } from './diceEngine'
 
 export type RollKind = 'teste' | 'livre'
+export type RollSource = 'player' | 'npc' | 'enemy'
 
 export type RollRecord = {
   id: string
@@ -9,6 +10,9 @@ export type RollRecord = {
   user_id: string
   username: string
   character_id: string | null
+  character_name: string | null
+  enemy_id: string | null
+  source: RollSource
   kind: RollKind
   label: string
   difficulty: DifficultyId | null
@@ -38,6 +42,9 @@ export async function publishRoll(input: NewRoll): Promise<void> {
     user_id: input.user_id,
     username: input.username,
     character_id: input.character_id,
+    character_name: input.character_name,
+    enemy_id: input.enemy_id,
+    source: input.source,
     kind: input.kind,
     label: input.label,
     difficulty: input.difficulty,

@@ -7,7 +7,7 @@ import { DIFFICULTIES } from '@/lib/diceEngine'
 
 // Animacao do numero (CountUp) e tempo que o resultado fica na tela depois dela.
 const ANIM_S = 1.3
-const HOLD_MS = 5000
+const HOLD_MS = 3000
 
 // Fica montado no App: mostra o resultado de quem rola na mesa (inclusive o mestre).
 export function DiceFeedHost() {
@@ -42,10 +42,10 @@ export function DiceFeedHost() {
         initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 220, damping: 18 }}
-        className="flex flex-col items-center"
+        className="flex flex-col items-center rounded-2xl bg-black/55 px-10 py-6 shadow-2xl ring-1 ring-white/10"
       >
         <p className="font-body text-xs uppercase tracking-[0.25em] text-neutral-300">
-          {roll.username}{diff ? ' · ' + diff.label : ''}
+          {(roll.character_name ?? roll.username)}{diff ? ' · ' + diff.label : ''}
         </p>
         <div style={{ color }} className="font-title text-[96px] font-bold leading-none drop-shadow-[0_0_24px_rgba(0,0,0,0.85)]">
           <CountUp from={0} to={roll.total} duration={ANIM_S} />

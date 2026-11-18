@@ -1,6 +1,7 @@
 import AbilityBuilder, { type AbilityInput } from '@/components/AbilityBuilder'
 import { saveAbility } from '@/lib/saveAbility'
 import AbilityCombatStatus from '@/components/AbilityCombatStatus'
+import DadosPanel from '@/components/DadosPanel'
 import { abilitySummary, EFFECTS, type AbilityDefinition } from '@/lib/abilityDefinition'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
@@ -374,6 +375,12 @@ export default function FichaInimigo() {
         </div>
       </Reveal>
 
+      <Reveal delay={140} className="mt-10">
+        <h2 className="font-title font-semibold text-xl text-neutral-100">Dados</h2>
+        <div className="mt-4">
+          <DadosPanel traits={enemy} actorName={enemy.name} source="enemy" enemyId={enemy.id} />
+        </div>
+      </Reveal>
       <Reveal delay={160} className="mt-10">
         <h2 className="font-title font-semibold text-xl text-neutral-100">Habilidades</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
