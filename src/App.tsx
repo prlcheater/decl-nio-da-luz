@@ -22,6 +22,7 @@ const PainelElementalistas = lazy(() => import('@/pages/player/PainelElementalis
 const PainelInimigos = lazy(() => import('@/pages/player/PainelInimigos'))
 const FichaInimigo = lazy(() => import('@/pages/player/FichaInimigo'))
 const Vtt = lazy(() => import('@/pages/player/Vtt'))
+const CentralDados = lazy(() => import('@/pages/player/CentralDados'))
 
 export default function App() {
   const { pathname } = useLocation()
@@ -119,6 +120,7 @@ export default function App() {
           }
         />
         <Route path="/player/vtt" element={<ProtectedRoute><Vtt /></ProtectedRoute>} />
+        <Route path="/player/mestre/dados" element={<ProtectedRoute><CentralDados /></ProtectedRoute>} />
       </Routes>
       </Suspense>
       </ErrorBoundary>

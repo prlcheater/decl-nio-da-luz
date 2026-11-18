@@ -291,3 +291,7 @@ Ordem de iniciativa em faixa no topo (turno atual destacado), barra de PE dos al
 ### 14/11/2026 — Beta 1.4, rodada 5: combate legado aposentado; higienizacao
 
 A rota `/player/combate` agora redireciona para `/player/vtt` e o arquivo `src/pages/player/Combate.tsx` foi removido. O card "Combate (legado)" saiu do painel do mestre e o link da ficha aponta para a Mesa de combate. Auditoria confirmou que `AbilityCombatStatus` e `ImageCropModal` seguem em uso. Verificacao: tsc, lint e testes (24/24).
+
+### 14/11/2026 — Beta 1.5: reprojeto dos Dados + Central de Dados
+
+Testes da ficha reprojetados: Favoravel +2, Regular 0, Dificil -4, Severa -8 (o numero de d20 passou a depender so do traco; o poolDelta saiu). Cada rolagem (teste de traco ou livre) agora: e salva em `dice_rolls` (patch `11_beta-1.5-central-de-dados.sql`), dispara um OVERLAY animado (fundo com blur + numero grande reusando CountUp/TextType/motion) que se esconde 5s apos o fim da animacao, e e transmitida por Realtime broadcast — o mestre ve no momento. Nova area Central de Dados (`/player/mestre/dados`, card no painel) lista as rolagens dos ultimos 2 dias em formato de chat (icone, nome e resultado), com filtro por jogador e limpeza (`purge_old_dice_rolls`). Verificacao: tsc, lint e testes (24/24).

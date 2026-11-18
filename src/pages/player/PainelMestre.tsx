@@ -1,5 +1,5 @@
 import { Link, Navigate } from 'react-router-dom'
-import { LogOut, Sparkles, Skull, Swords, Users, UserRound } from 'lucide-react'
+import { LogOut, Sparkles, Skull, Swords, Users, UserRound, Dices } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 import Reveal from '@/components/Reveal'
 import GlowCard from '@/components/GlowCard'
@@ -10,6 +10,7 @@ const MENU_ITEMS = [
   { to: '/player/mestre/npcs', label: 'Personagens do Mundo', desc: 'NPCs com ficha completa, sem login próprio.', icon: Users },
   { to: '/player/mestre/elementalistas', label: 'Elementalistas', desc: 'Ver, criar e gerenciar as fichas dos jogadores.', icon: Sparkles },
   { to: '/player/mestre/inimigos', label: 'Inimigos', desc: 'Cadastrar inimigos e instâncias de combate.', icon: Skull },
+  { to: '/player/mestre/dados', label: 'Central de Dados', desc: 'Rolagens recentes da mesa (2 dias).', icon: Dices },
   { to: '/player/vtt', label: 'Mesa de combate', desc: 'Mapa, tokens e acao por turnos no tabuleiro.', icon: Swords },
   // O combate legado foi aposentado; a Mesa de combate (VTT) o substitui.
 ]
